@@ -233,7 +233,7 @@ export default function Sidebar() {
         {/* Bottom Section */}
         <div className="p-3 border-t border-white/5 flex-shrink-0 space-y-1">
           <Link
-            href="/settings"
+            href="/settings/password"
             className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-white/40 hover:text-white/80 hover:bg-white/5 transition-all"
           >
             <Settings size={15} className="text-white/30" />
