@@ -18,8 +18,8 @@ import { API_BASE } from "@/lib/api";
 export default function MemberLoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("fahad@argplatform.com");
-  const [password, setPassword] = useState("Password@123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -67,42 +67,13 @@ export default function MemberLoginPage() {
         return;
       }
 
-      if (!response.ok && data.message) {
-        setError(data.message);
+      if (!response.ok) {
+        setError(data.message || data.error || "Invalid member credentials. Please check your email and password.");
         return;
       }
-
-      // Fallback demo member account
-      const matchedMember = MEMBERS.find(m => m.email === email.trim()) || MEMBERS[0];
-      const fallbackUser = {
-        id: "usr-" + matchedMember.name.toLowerCase(),
-        fullName: matchedMember.name,
-        full_name: matchedMember.name,
-        name: matchedMember.name,
-        email: email.trim() || matchedMember.email,
-        role: "Member",
-      };
-      const fallbackToken = "member-session-token-" + Date.now();
-      localStorage.setItem("token", fallbackToken);
-      localStorage.setItem("user", JSON.stringify(fallbackUser));
-      window.dispatchEvent(new Event("storage"));
-      router.push("/dashboard");
     } catch (err: any) {
-      console.warn("Backend auth request failed, activating Member fallback session:", err);
-      const matchedMember = MEMBERS.find(m => m.email === email.trim()) || MEMBERS[0];
-      const fallbackUser = {
-        id: "usr-" + matchedMember.name.toLowerCase(),
-        fullName: matchedMember.name,
-        full_name: matchedMember.name,
-        name: matchedMember.name,
-        email: email.trim() || matchedMember.email,
-        role: "Member",
-      };
-      const fallbackToken = "member-session-token-" + Date.now();
-      localStorage.setItem("token", fallbackToken);
-      localStorage.setItem("user", JSON.stringify(fallbackUser));
-      window.dispatchEvent(new Event("storage"));
-      router.push("/dashboard");
+      console.error("Member login request failed:", err);
+      setError("Unable to connect to authentication server. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -187,11 +158,10 @@ export default function MemberLoginPage() {
 
             {/* Password Field */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="mb-1.5">
                 <label className="block text-xs font-semibold text-slate-700">
                   Password
                 </label>
-                <span className="text-[11px] text-amber-600 font-medium">Demo pre-filled</span>
               </div>
               <div className="relative">
                 <Lock

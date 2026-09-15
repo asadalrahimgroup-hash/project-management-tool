@@ -18,8 +18,8 @@ import { API_BASE } from "@/lib/api";
 export default function ManagerLoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("asad@argplatform.com");
-  const [password, setPassword] = useState("Password@123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -59,40 +59,13 @@ export default function ManagerLoginPage() {
         return;
       }
 
-      if (!response.ok && data.message) {
-        setError(data.message);
+      if (!response.ok) {
+        setError(data.message || data.error || "Invalid manager credentials. Please check your email and password.");
         return;
       }
-
-      // Fallback demo manager account
-      const fallbackUser = {
-        id: "usr-pm-asad",
-        fullName: "Asad Navaid",
-        full_name: "Asad Navaid",
-        name: "Asad Navaid",
-        email: email.trim() || "asad@argplatform.com",
-        role: "Project Manager",
-      };
-      const fallbackToken = "pm-session-token-" + Date.now();
-      localStorage.setItem("token", fallbackToken);
-      localStorage.setItem("user", JSON.stringify(fallbackUser));
-      window.dispatchEvent(new Event("storage"));
-      router.push("/dashboard");
     } catch (err: any) {
-      console.warn("Backend auth request failed, activating Manager fallback session:", err);
-      const fallbackUser = {
-        id: "usr-pm-asad",
-        fullName: "Asad Navaid",
-        full_name: "Asad Navaid",
-        name: "Asad Navaid",
-        email: email.trim() || "asad@argplatform.com",
-        role: "Project Manager",
-      };
-      const fallbackToken = "pm-session-token-" + Date.now();
-      localStorage.setItem("token", fallbackToken);
-      localStorage.setItem("user", JSON.stringify(fallbackUser));
-      window.dispatchEvent(new Event("storage"));
-      router.push("/dashboard");
+      console.error("Manager login request failed:", err);
+      setError("Unable to connect to authentication server. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -157,11 +130,10 @@ export default function ManagerLoginPage() {
 
             {/* Password Field */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="mb-1.5">
                 <label className="block text-xs font-semibold text-slate-700">
                   Password
                 </label>
-                <span className="text-[11px] text-amber-600 font-medium">Demo pre-filled</span>
               </div>
               <div className="relative">
                 <Lock

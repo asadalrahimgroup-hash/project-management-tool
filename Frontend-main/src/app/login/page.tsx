@@ -20,8 +20,8 @@ export default function LoginPage() {
   const router = useRouter();
 
   const [roleMode, setRoleMode] = useState<"manager" | "member">("manager");
-  const [email, setEmail] = useState("asad@argplatform.com");
-  const [password, setPassword] = useState("Password@123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -29,13 +29,6 @@ export default function LoginPage() {
 
   const switchRoleMode = (mode: "manager" | "member") => {
     setRoleMode(mode);
-    if (mode === "manager") {
-      setEmail("asad@argplatform.com");
-      setPassword("Password@123");
-    } else {
-      setEmail("fahad@argplatform.com");
-      setPassword("Password@123");
-    }
     setError("");
   };
 
@@ -73,57 +66,13 @@ export default function LoginPage() {
         return;
       }
 
-      // Fallback demo account based on roleMode
-      const isManager = roleMode === "manager";
-      const fallbackUser = isManager
-        ? {
-            id: "usr-pm-asad",
-            fullName: "Asad Navaid",
-            full_name: "Asad Navaid",
-            name: "Asad Navaid",
-            email: email.trim() || "asad@argplatform.com",
-            role: "Project Manager",
-          }
-        : {
-            id: "usr-mem-fahad",
-            fullName: "Fahad",
-            full_name: "Fahad",
-            name: "Fahad",
-            email: email.trim() || "fahad@argplatform.com",
-            role: "Member",
-          };
-
-      const fallbackToken = (isManager ? "pm-" : "member-") + "session-" + Date.now();
-      localStorage.setItem("token", fallbackToken);
-      localStorage.setItem("user", JSON.stringify(fallbackUser));
-      window.dispatchEvent(new Event("storage"));
-      router.push("/dashboard");
+      if (!response.ok) {
+        setError(data.message || data.error || "Invalid credentials. Please check your email and password.");
+        return;
+      }
     } catch (err: any) {
-      console.warn("Backend auth failed, using demo fallback session:", err);
-      const isManager = roleMode === "manager";
-      const fallbackUser = isManager
-        ? {
-            id: "usr-pm-asad",
-            fullName: "Asad Navaid",
-            full_name: "Asad Navaid",
-            name: "Asad Navaid",
-            email: email.trim() || "asad@argplatform.com",
-            role: "Project Manager",
-          }
-        : {
-            id: "usr-mem-fahad",
-            fullName: "Fahad",
-            full_name: "Fahad",
-            name: "Fahad",
-            email: email.trim() || "fahad@argplatform.com",
-            role: "Member",
-          };
-
-      const fallbackToken = (isManager ? "pm-" : "member-") + "session-" + Date.now();
-      localStorage.setItem("token", fallbackToken);
-      localStorage.setItem("user", JSON.stringify(fallbackUser));
-      window.dispatchEvent(new Event("storage"));
-      router.push("/dashboard");
+      console.error("Login request failed:", err);
+      setError("Unable to connect to the authentication server. Please verify your network or try again.");
     } finally {
       setLoading(false);
     }
@@ -204,13 +153,11 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="mb-1.5">
                 <label className="block text-xs font-semibold text-slate-700">
                   Password
                 </label>
-                <span className="text-[11px] text-amber-600 font-medium">Demo pre-filled</span>
               </div>
               <div className="relative">
                 <Lock
