@@ -10,8 +10,6 @@ import {
   ArrowRight,
   ShieldCheck,
   AlertCircle,
-  Briefcase,
-  UserCheck,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "@/lib/api";
@@ -19,18 +17,12 @@ import { API_BASE } from "@/lib/api";
 export default function LoginPage() {
   const router = useRouter();
 
-  const [roleMode, setRoleMode] = useState<"manager" | "member">("manager");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
-
-  const switchRoleMode = (mode: "manager" | "member") => {
-    setRoleMode(mode);
-    setError("");
-  };
 
   const handleLogin = async (e?: FormEvent) => {
     if (e) e.preventDefault();
@@ -99,43 +91,15 @@ export default function LoginPage() {
               Sign In to Your Workspace
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Select your portal below or enter your credentials.
+              Enter your credentials to continue.
             </p>
-          </div>
-
-          {/* Dedicated Portal Buttons */}
-          <div className="grid grid-cols-2 gap-2 mb-6 p-1.5 rounded-2xl bg-slate-100 border border-slate-200">
-            <button
-              type="button"
-              onClick={() => switchRoleMode("manager")}
-              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                roleMode === "manager"
-                  ? "bg-white text-[#1e3a8a] shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Briefcase size={14} className={roleMode === "manager" ? "text-[#1e3a8a]" : "text-slate-400"} />
-              Manager
-            </button>
-            <button
-              type="button"
-              onClick={() => switchRoleMode("member")}
-              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                roleMode === "member"
-                  ? "bg-white text-emerald-800 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <UserCheck size={14} className={roleMode === "member" ? "text-emerald-700" : "text-slate-400"} />
-              Team Member
-            </button>
           </div>
 
           {/* Form */}
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                {roleMode === "manager" ? "Manager Email" : "Member Email"}
+                Email Address
               </label>
               <div className="relative">
                 <Mail
@@ -147,7 +111,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder={roleMode === "manager" ? "alex@argplatform.com" : "sarah@argplatform.com"}
+                  placeholder="name@argplatform.com"
                   autoComplete="email"
                   className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:ring-2 focus:ring-blue-100 outline-none transition-all"
                 />
@@ -217,7 +181,7 @@ export default function LoginPage() {
                 </>
               ) : (
                 <>
-                  <span>Sign In as {roleMode === "manager" ? "Project Manager" : "Team Member"}</span>
+                  <span>Sign In</span>
                   <ArrowRight
                     size={15}
                     className="group-hover:translate-x-0.5 transition-transform"
@@ -226,20 +190,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Standalone Direct Link Prompts */}
-          <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Direct Links:</span>
-            <div className="flex items-center gap-3 font-semibold text-[#1e3a8a]">
-              <Link href="/login-manager" className="hover:underline">
-                /login-manager
-              </Link>
-              <span>•</span>
-              <Link href="/login-member" className="hover:underline">
-                /login-member
-              </Link>
-            </div>
-          </div>
         </div>
 
         <div className="mt-6 text-center space-y-1 text-slate-400 text-xs">
