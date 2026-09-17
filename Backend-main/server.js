@@ -109,6 +109,7 @@ app.use("/api/performance", performanceRoutes);
 app.use("/api/programs", require("./routes/programRoutes"));
 app.use('/api', taskWorkPartRoutes);
 app.use("/api/program-tasks", programTaskRoutes);
+app.use("/api/daily-updates", require("./routes/dailyUpdateRoutes"));
 // ============================================================
 // 404 HANDLER
 // ============================================================

@@ -159,8 +159,11 @@ export default function Tasks() {
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
 
-  // Create Modal State
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  // Create / Edit Task Modal State
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [taskModalMode, setTaskModalMode] = useState<"create" | "edit">("create");
+  const [editTaskId, setEditTaskId] = useState<string | null>(null);
+  
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [taskForm, setTaskForm] = useState({
@@ -453,8 +456,8 @@ export default function Tasks() {
     }
   };
 
-  // Create Task
-  const handleCreateTask = async (e: React.FormEvent) => {
+  // Create / Edit Task Submit
+  const handleTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskForm.name.trim()) {
       setCreateError("Task title is required");
@@ -469,8 +472,16 @@ export default function Tasks() {
     setCreateError("");
 
     try {
-      const res = await fetch(`${API_BASE}/tasks/project/${taskForm.projectId}`, {
-        method: "POST",
+      let endpoint = `${API_BASE}/tasks/project/${taskForm.projectId}`;
+      let method = "POST";
+      
+      if (taskModalMode === "edit" && editTaskId) {
+        endpoint = `${API_BASE}/tasks/${editTaskId}`;
+        method = "PATCH";
+      }
+
+      const res = await fetch(endpoint, {
+        method,
         headers: getHeaders(),
         body: JSON.stringify({
           name: taskForm.name.trim(),
@@ -485,12 +496,12 @@ export default function Tasks() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.error || "Failed to create task");
+      if (!res.ok) throw new Error(data.message || data.error || `Failed to ${taskModalMode} task`);
 
       const createdId = data.task?.id || data.id || data.data?.id;
 
       // If initial file was attached, upload it
-      if (initialFile && createdId) {
+      if (initialFile && createdId && taskModalMode === "create") {
         const formData = new FormData();
         formData.append("file", initialFile);
         await fetch(`${API_BASE}/tasks/${createdId}/attachments`, {
@@ -500,7 +511,7 @@ export default function Tasks() {
         }).catch(err => console.error("Attachment upload error", err));
       }
 
-      setIsCreateOpen(false);
+      setIsTaskModalOpen(false);
       setTaskForm({
         name: "",
         description: "",
@@ -512,9 +523,23 @@ export default function Tasks() {
         dueDate: "",
       });
       setInitialFile(null);
+      
+      // Update selectedTask if editing
+      if (taskModalMode === "edit" && selectedTask?.id === editTaskId) {
+        setSelectedTask(prev => prev ? {
+           ...prev,
+           name: taskForm.name.trim(),
+           description: taskForm.description.trim(),
+           status: taskForm.status,
+           priority: taskForm.priority,
+           assignee_id: taskForm.assigneeId,
+           due_date: taskForm.dueDate
+        } : null);
+      }
+      
       fetchData();
     } catch (err: any) {
-      setCreateError(err.message || "Error creating task");
+      setCreateError(err.message || `Error ${taskModalMode === 'edit' ? 'updating' : 'creating'} task`);
     } finally {
       setCreating(false);
     }
@@ -779,7 +804,7 @@ export default function Tasks() {
             </button>
           </div>
           <button
-            onClick={() => setIsCreateOpen(true)}
+            onClick={() => setIsTaskModalOpen(true)}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white px-4 py-2.5 rounded-xl font-semibold text-sm shadow-sm shadow-indigo-200 transition-all"
           >
             <Plus size={16} /> New Task
@@ -1115,12 +1140,36 @@ export default function Tasks() {
                 </div>
                 <h2 className="text-lg font-bold text-slate-900 leading-snug">{selectedTask.name}</h2>
               </div>
-              <button
-                onClick={() => setSelectedTask(null)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                {isManager && (
+                  <button
+                    onClick={() => {
+                      setTaskModalMode("edit");
+                      setEditTaskId(selectedTask.id);
+                      setTaskForm({
+                        name: selectedTask.name || "",
+                        description: (selectedTask as any).description || "",
+                        projectId: selectedTask.project_id || "",
+                        assigneeId: selectedTask.assignee_id || "",
+                        priority: (selectedTask.priority as Priority) || "Medium",
+                        status: (selectedTask.status as TaskStatus) || "To Do",
+                        startDate: "",
+                        dueDate: selectedTask.due_date ? new Date(selectedTask.due_date).toISOString().split('T')[0] : "",
+                      });
+                      setIsTaskModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 text-xs font-bold bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 rounded-lg shadow-sm"
+                  >
+                    Edit Task
+                  </button>
+                )}
+                <button
+                  onClick={() => setSelectedTask(null)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Tab Navigation */}
@@ -1458,23 +1507,23 @@ export default function Tasks() {
       )}
 
       {/* ── CREATE NEW TASK MODAL ── */}
-      {isCreateOpen && (
+      {isTaskModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
             <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Create Task</h3>
-                <p className="text-xs text-slate-500">Add an action item to a project</p>
+                <h3 className="text-base font-bold text-slate-900">{taskModalMode === "edit" ? "Edit Task" : "Create Task"}</h3>
+                <p className="text-xs text-slate-500">{taskModalMode === "edit" ? "Modify existing task details" : "Add an action item to a project"}</p>
               </div>
               <button
-                onClick={() => setIsCreateOpen(false)}
+                onClick={() => setIsTaskModalOpen(false)}
                 className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateTask} className="p-6 space-y-4 overflow-y-auto flex-1">
+            <form onSubmit={handleTaskSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
               {createError && (
                 <div className="p-3 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs font-semibold flex items-center gap-2">
                   <AlertCircle size={14} /> {createError}
@@ -1597,7 +1646,7 @@ export default function Tasks() {
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setIsCreateOpen(false)}
+                  onClick={() => setIsTaskModalOpen(false)}
                   className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
                 >
                   Cancel
@@ -1607,7 +1656,7 @@ export default function Tasks() {
                   disabled={creating}
                   className="px-5 py-2.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm transition-all disabled:opacity-50"
                 >
-                  {creating ? "Creating Task..." : "Create Task"}
+                  {creating ? (taskModalMode === "edit" ? "Saving..." : "Creating Task...") : (taskModalMode === "edit" ? "Save Changes" : "Create Task")}
                 </button>
               </div>
             </form>

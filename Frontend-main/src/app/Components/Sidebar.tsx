@@ -48,6 +48,7 @@ const MANAGER_NAV_GROUPS: NavGroup[] = [
       { label: "Master Schedule", href: "/schedule", icon: CalendarDays },
       { label: "Reports & Audits", href: "/reports", icon: BarChart3 },
       { label: "Team Performance", href: "/performance", icon: Activity },
+      { label: "Daily Updates", href: "/daily-updates", icon: Sparkles },
     ],
   },
   {
@@ -73,6 +74,7 @@ const MEMBER_NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "My Schedule", href: "/schedule", icon: CalendarDays },
       { label: "My Velocity & Stats", href: "/performance", icon: Activity },
+      { label: "Daily Updates", href: "/daily-updates", icon: Sparkles },
     ],
   },
 ];

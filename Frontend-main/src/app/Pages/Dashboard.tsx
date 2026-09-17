@@ -285,7 +285,7 @@ export default function Dashboard() {
     const inProgress = scopedTasks.filter((t) => t.status === "In Progress").length;
     const todo = scopedTasks.filter((t) => t.status === "To Do" || !t.status).length;
     const review = scopedTasks.filter((t) => t.status === "Review").length;
-    const overdue = scopedTasks.filter((t) => t.due_date && new Date(t.due_date) < new Date() && t.status !== "Done").length;
+    const overdue = scopedTasks.filter((t) => t.due_date && new Date(t.due_date) < new Date() && !["done", "completed"].includes((t.status || "").toLowerCase())).length;
     const active = scopedProjects.filter((p) => !["completed", "done"].includes((p.status || "").toLowerCase())).length;
     const completed = scopedProjects.filter((p) => ["completed", "done"].includes((p.status || "").toLowerCase())).length;
     const rate = scopedTasks.length > 0 ? Math.round((done / scopedTasks.length) * 100) : 0;
@@ -303,7 +303,7 @@ export default function Dashboard() {
     const completedPendingReview = memberTasks.filter((t) => t.status === "Completed").length;
     const inProgress = memberTasks.filter((t) => t.status === "In Progress").length;
     const todo = memberTasks.filter((t) => t.status === "To Do" || !t.status).length;
-    const overdue = memberTasks.filter((t) => t.due_date && new Date(t.due_date) < new Date() && t.status !== "Done").length;
+    const overdue = memberTasks.filter((t) => t.due_date && new Date(t.due_date) < new Date() && !["done", "completed"].includes((t.status || "").toLowerCase())).length;
     const rate = total > 0 ? Math.round((done / total) * 100) : 0;
     
     // Member projects list
@@ -312,7 +312,7 @@ export default function Dashboard() {
 
     // Next upcoming priority tasks
     const focusTasks = [...memberTasks]
-      .filter(t => t.status !== "Done")
+      .filter(t => !["done", "completed"].includes((t.status || "").toLowerCase()))
       .sort((a, b) => {
         if (!a.due_date) return 1;
         if (!b.due_date) return -1;
@@ -711,7 +711,7 @@ export default function Dashboard() {
                   ? Math.round((doneTasks / projectTasks.length) * 100) 
                   : (["unassigned", "not started"].includes((p.status || "").toLowerCase()) ? 0 : (p.progress || 0));
                 const days = daysUntil(p.deadline);
-                const isOverdue = days !== null && days < 0;
+                const isOverdue = days !== null && days < 0 && !["completed", "done"].includes((p.status || "").toLowerCase());
                 const sc = statusColor(p.status);
                 const CARD_GRADIENTS = [
                   "from-indigo-500/10 to-violet-500/5",
@@ -839,7 +839,7 @@ export default function Dashboard() {
                 <div className="space-y-3">
                   {upcomingDeadlines.map((p) => {
                     const days = daysUntil(p.deadline);
-                    const isLate = days !== null && days < 0;
+                    const isLate = days !== null && days < 0 && !["completed", "done"].includes((p.status || "").toLowerCase());
                     const projectTasks = tasks.filter((t) => t.project_id === p.id);
                     const doneTasks = projectTasks.filter((t) => t.status === "Done").length;
                     const prog = projectTasks.length > 0 
@@ -957,7 +957,7 @@ export default function Dashboard() {
                 ) : (
                   memberStats.focusTasks.map((t) => {
                     const days = daysUntil(t.due_date);
-                    const isLate = days !== null && days < 0 && t.status !== "Done";
+                    const isLate = days !== null && days < 0 && !["done", "completed"].includes((t.status || "").toLowerCase());
                     const isCompleted = t.status === "Completed";
                     return (
                       <div
@@ -1102,7 +1102,7 @@ export default function Dashboard() {
                   ? Math.round((doneTasks / projectTasks.length) * 100) 
                   : (["unassigned", "not started"].includes((p.status || "").toLowerCase()) ? 0 : (p.progress || 0));
                 const days = daysUntil(p.deadline);
-                const isOverdue = days !== null && days < 0;
+                const isOverdue = days !== null && days < 0 && !["completed", "done"].includes((p.status || "").toLowerCase());
                 const sc = statusColor(p.status);
                 const CARD_GRADIENTS = [
                   "from-indigo-500/10 to-violet-500/5",

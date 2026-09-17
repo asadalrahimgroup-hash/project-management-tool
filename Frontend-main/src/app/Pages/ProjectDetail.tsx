@@ -151,6 +151,51 @@ export default function ProjectDetail() {
   const [memberRole, setMemberRole] = useState("Contributor");
   const [savingAction, setSavingAction] = useState(false);
 
+  // Edit Project State
+  const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
+  const [editProjectForm, setEditProjectForm] = useState({
+    name: "",
+    domain: "",
+    priority: "Medium",
+    status: "Planning",
+    startDate: "",
+    deadline: "",
+    about_title: "",
+    about_description: ""
+  });
+  
+  const handleEditProjectSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingAction(true);
+    try {
+      const res = await fetch(`${API_BASE}/projects/${projectId}`, {
+        method: "PATCH",
+        headers: getHeaders(),
+        body: JSON.stringify({
+          name: editProjectForm.name,
+          domain: editProjectForm.domain,
+          priority: editProjectForm.priority,
+          status: editProjectForm.status,
+          start_date: editProjectForm.startDate,
+          deadline: editProjectForm.deadline,
+          about_title: editProjectForm.about_title,
+          about_description: editProjectForm.about_description
+        }),
+      });
+      if (res.ok) {
+        setIsEditProjectOpen(false);
+        loadProjectData();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        alert(d.message || "Failed to update project");
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to update project");
+    } finally {
+      setSavingAction(false);
+    }
+  };
+
   const getHeaders = (): HeadersInit => {
     const token = localStorage.getItem("token");
     return { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
@@ -285,7 +330,7 @@ export default function ProjectDetail() {
     const inProgress = tasks.filter(t => t.status === "In Progress").length;
     const review = tasks.filter(t => t.status === "Review").length;
     const todo = tasks.filter(t => t.status === "To Do" || !t.status).length;
-    const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== "Done").length;
+    const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && !["done", "completed"].includes((t.status || "").toLowerCase())).length;
     const rate = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0;
     const assignees = Array.from(new Set(tasks.filter(t => t.assignee_name).map(t => t.assignee_name!)));
     const highPri = tasks.filter(t => (t.priority || "").toLowerCase() === "high").length;
@@ -305,7 +350,7 @@ export default function ProjectDetail() {
   const theme = getTheme(project.name);
   const prog = project.progress || 0;
   const days = daysUntil(project.deadline);
-  const isOverdue = days !== null && days < 0;
+  const isOverdue = days !== null && days < 0 && !["completed", "done"].includes((project?.status || "").toLowerCase());
 
   return (
     <div className="min-h-screen bg-[#f8f8f7]">
@@ -356,17 +401,38 @@ export default function ProjectDetail() {
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {isManager && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedUserId("");
-                    setAssignModalOpen(true);
-                  }}
-                  className="flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-full bg-white text-gray-900 hover:bg-white/90 shadow-md transition-all cursor-pointer"
-                >
-                  <UserCheck size={13} className="text-indigo-600" />
-                  {project.manager_name && project.status !== "Unassigned" ? "Reassign" : "Assign to Member"}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditProjectForm({
+                        name: project.name || "",
+                        domain: project.domain || "",
+                        priority: project.priority || "Medium",
+                        status: project.status || "Planning",
+                        startDate: project.start_date ? new Date(project.start_date).toISOString().split('T')[0] : "",
+                        deadline: project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : "",
+                        about_title: project.about_title || "",
+                        about_description: project.about_description || ""
+                      });
+                      setIsEditProjectOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-full bg-white text-gray-900 hover:bg-white/90 shadow-md transition-all cursor-pointer"
+                  >
+                    Edit Project
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedUserId("");
+                      setAssignModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-full bg-white text-gray-900 hover:bg-white/90 shadow-md transition-all cursor-pointer"
+                  >
+                    <UserCheck size={13} className="text-indigo-600" />
+                    {project.manager_name && project.status !== "Unassigned" ? "Reassign" : "Assign"}
+                  </button>
+                </>
               )}
               {project.status && (
                 <span className="hidden sm:flex text-[11px] font-bold px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-white border border-white/20">
@@ -865,6 +931,127 @@ export default function ProjectDetail() {
                   className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-sm"
                 >
                   {savingAction ? "Adding..." : <><UserPlus size={14} /> Add Contributor</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* ── EDIT PROJECT MODAL ── */}
+      {isEditProjectOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 animate-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Edit Project Details</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Modify project configuration and timeline</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditProjectOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleEditProjectSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Project Name *</label>
+                <input
+                  required
+                  value={editProjectForm.name}
+                  onChange={e => setEditProjectForm({ ...editProjectForm, name: e.target.value })}
+                  className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Domain / Category</label>
+                <input
+                  value={editProjectForm.domain}
+                  onChange={e => setEditProjectForm({ ...editProjectForm, domain: e.target.value })}
+                  className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Status</label>
+                  <select
+                    value={editProjectForm.status}
+                    onChange={e => setEditProjectForm({ ...editProjectForm, status: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                  >
+                    <option value="Planning">Planning</option>
+                    <option value="Active">Active</option>
+                    <option value="On Hold">On Hold</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Priority</label>
+                  <select
+                    value={editProjectForm.priority}
+                    onChange={e => setEditProjectForm({ ...editProjectForm, priority: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Start Date</label>
+                  <input
+                    type="date"
+                    value={editProjectForm.startDate}
+                    onChange={e => setEditProjectForm({ ...editProjectForm, startDate: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Deadline</label>
+                  <input
+                    type="date"
+                    value={editProjectForm.deadline}
+                    onChange={e => setEditProjectForm({ ...editProjectForm, deadline: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">About Title</label>
+                <input
+                  value={editProjectForm.about_title}
+                  onChange={e => setEditProjectForm({ ...editProjectForm, about_title: e.target.value })}
+                  placeholder="e.g. Project Overview"
+                  className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Description</label>
+                <textarea
+                  value={editProjectForm.about_description}
+                  onChange={e => setEditProjectForm({ ...editProjectForm, about_description: e.target.value })}
+                  placeholder="Detailed project description..."
+                  className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white min-h-[100px] resize-y"
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditProjectOpen(false)}
+                  className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingAction}
+                  className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-sm"
+                >
+                  {savingAction ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>
