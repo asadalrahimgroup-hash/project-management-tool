@@ -125,7 +125,7 @@ export default function Sidebar() {
 
       <aside
         style={{ width: "var(--sidebar-width, 240px)" }}
-        className={`fixed inset-y-0 left-0 z-50 md:z-30 flex flex-col bg-[#0f1117] border-r border-white/5 transition-transform duration-200 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-50 md:z-30 flex flex-col bg-[#1e293b] border-r border-white/5 transition-transform duration-200 ease-in-out ${
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
