@@ -1021,7 +1021,7 @@ export default function Tasks() {
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4">Priority</th>
                   <th className="py-3 px-4">Project</th>
-                  <th className="py-3 px-4">Assignee</th>
+                  <th className="py-3 px-4">Member</th>
                   <th className="py-3 px-4">Due Date</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
@@ -1210,7 +1210,7 @@ export default function Tasks() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Assignee</span>
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Member</span>
                         {isManager && (
                           <span className="text-[10px] font-semibold text-indigo-600">Change</span>
                         )}
@@ -1666,3 +1666,4 @@ export default function Tasks() {
     </div>
   );
 }
+

@@ -582,7 +582,7 @@ export default function ProjectDetail() {
                     value: project.deadline ? new Date(project.deadline).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "Not set",
                     highlight: isOverdue ? "text-rose-600" : (days !== null && days <= 7 ? "text-amber-600" : undefined),
                   },
-                  { icon: User, label: "Manager", value: project.manager_name || "Unassigned" },
+                  { icon: User, label: "Project Lead", value: project.manager_name || "Unassigned" },
                   { icon: FolderKanban, label: "Domain", value: project.domain || "General" },
                 ].map(row => (
                   <div key={row.label} className="flex items-center gap-3">
@@ -713,7 +713,7 @@ export default function ProjectDetail() {
                   <th className="text-left py-2.5 px-6 text-[11px] font-bold uppercase tracking-wider text-gray-400">Task</th>
                   <th className="text-left py-2.5 px-4 text-[11px] font-bold uppercase tracking-wider text-gray-400">Status</th>
                   <th className="text-left py-2.5 px-4 text-[11px] font-bold uppercase tracking-wider text-gray-400 hidden md:table-cell">Priority</th>
-                  <th className="text-left py-2.5 px-4 text-[11px] font-bold uppercase tracking-wider text-gray-400 hidden lg:table-cell">Assignee</th>
+                  <th className="text-left py-2.5 px-4 text-[11px] font-bold uppercase tracking-wider text-gray-400 hidden lg:table-cell">Member</th>
                   <th className="text-left py-2.5 px-4 text-[11px] font-bold uppercase tracking-wider text-gray-400 hidden md:table-cell">Due Date</th>
                 </tr>
               </thead>
@@ -1061,3 +1061,4 @@ export default function ProjectDetail() {
     </div>
   );
 }
+
