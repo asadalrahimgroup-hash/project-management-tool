@@ -179,11 +179,22 @@ const createProject = async (req, res) => {
             name,
             domain,
             aboutTitle,
+            about_title,
             aboutDescription,
+            about_description,
             startDate,
+            start_date,
             deadline,
-            priority
+            priority,
+            status,
+            programId,
+            program_id
         } = req.body;
+        
+        const finalStartDate = startDate || start_date;
+        const finalAboutTitle = aboutTitle || about_title;
+        const finalAboutDescription = aboutDescription || about_description;
+        const finalProgramId = programId || program_id;
 
         console.log('🔍 Creating project:', { name, domain, priority, user: req.user?.id });
 
@@ -195,7 +206,7 @@ const createProject = async (req, res) => {
         }
 
         const projectId = `proj-${Date.now()}`;
-        const programId = req.body.programId || req.body.program_id || 'prog-qarc';
+        
 
         const result = await safeQuery(
             `
@@ -272,11 +283,22 @@ const updateProject = async (req, res) => {
             name,
             domain,
             aboutTitle,
+            about_title,
             aboutDescription,
+            about_description,
             startDate,
+            start_date,
             deadline,
-            priority
+            priority,
+            status,
+            programId,
+            program_id
         } = req.body;
+        
+        const finalStartDate = startDate || start_date;
+        const finalAboutTitle = aboutTitle || about_title;
+        const finalAboutDescription = aboutDescription || about_description;
+        const finalProgramId = programId || program_id;
 
         console.log('🔍 Updating project:', { projectId, name, user: req.user?.id });
 

@@ -17,7 +17,7 @@ type Project = {
   id: string; name: string; domain?: string; status?: string;
   priority?: string; start_date?: string; deadline?: string;
   progress?: number; manager_name?: string; about_description?: string;
-  about_title?: string;
+  about_title?: string; program_id?: string;
 };
 type Task = {
   id: string; name?: string; title?: string; status?: string;
@@ -131,7 +131,7 @@ export default function ProjectDetail() {
   const params = useParams();
   const router = useRouter();
   const projectId = params?.id as string;
-  const { getProjectProgram } = useProgram();
+  const { getProjectProgram, programs } = useProgram();
   const { user } = useAuth();
   const roleLower = (user?.role || "").toLowerCase();
   const isManager =
@@ -1061,4 +1061,5 @@ export default function ProjectDetail() {
     </div>
   );
 }
+
 
