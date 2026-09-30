@@ -547,23 +547,7 @@ const updateTaskStatus = async (req, res) => {
             }
         }
 
-        // ---------------------------------------------------------
-        // PROJECT MANAGER / EXECUTIVE MANAGER / SYSTEM ADMINISTRATOR
-        // Can set: "To Do", "In Progress", "Backlog"
-        // Can set "Done" ONLY if current status is "Completed"
-        // ---------------------------------------------------------
-        if (
-            userRole === "Project Manager" ||
-            userRole === "Executive Manager" ||
-            userRole === "System Administrator"
-        ) {
-            if (status === "Done" && currentStatus !== "Completed") {
-                return res.status(400).json({
-                    success: false,
-                    message: "This task cannot be marked as Done yet. The assigned Member must first mark it as Completed."
-                });
-            }
-        }
+
 
         // =========================================================
         // UPDATE STATUS
