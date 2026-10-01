@@ -108,8 +108,17 @@ const getProjects = async (req, res) => {
                 GROUP BY pm.project_id
             ) pm_agg ON pm_agg.project_id = p.id
 
+            WHERE  = TRUE 
+               OR p.project_manager_id = 
+               OR p.created_by = 
+               OR p.id IN (SELECT project_id FROM project_members WHERE user_id = )
+               OR p.id IN (SELECT project_id FROM tasks WHERE assignee_id =  OR assigned_to = )
+
             ORDER BY p.created_at DESC
-        `);
+        `, [
+            ['Project Manager', 'Executive Manager', 'System Administrator'].includes(req.user?.role),
+            req.user?.id
+        ]);
 
         console.log(`✅ Found ${result.rows.length} projects`);
 
