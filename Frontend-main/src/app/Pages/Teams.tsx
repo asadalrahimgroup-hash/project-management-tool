@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Users, Mail, Shield, Briefcase } from "lucide-react";
+import { Users, Mail, Shield, Briefcase, FileText, X, Check, FolderKanban, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "@/lib/api";
 
-type Member = { id: string; full_name: string; email?: string; role: string; team_name?: string };
+type Member = { id: string; full_name: string; email?: string; role: string; team_name?: string; remarks?: string; projects?: any[]; tasks?: any[]; taskStats?: any; job_title?: string };
 
 function getInitials(name: string) {
   return name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
@@ -42,6 +42,62 @@ export default function Teams() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  // Member Profile & Remarks Modal State
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [remarksText, setRemarksText] = useState("");
+  const [savingRemarks, setSavingRemarks] = useState(false);
+  const [remarksSaved, setRemarksSaved] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  const openMemberProfile = async (m: Member) => {
+    setSelectedMember(m);
+    setRemarksText(m.remarks || "");
+    setRemarksSaved(false);
+    setLoadingProfile(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/users/${m.id}`, {
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+      });
+      if (res.ok) {
+        const d = await res.json();
+        const profile = d.user || d.data || d;
+        setSelectedMember(prev => ({ ...prev!, ...profile }));
+        setRemarksText(profile.remarks || "");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  const handleSaveMemberRemarks = async () => {
+    if (!selectedMember) return;
+    setSavingRemarks(true);
+    setRemarksSaved(false);
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/users/${selectedMember.id}/remarks`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ remarks: remarksText }),
+      });
+
+      if (res.ok) {
+        setRemarksSaved(true);
+        setMembers(prev => prev.map(mbr => mbr.id === selectedMember.id ? { ...mbr, remarks: remarksText } : mbr));
+        setSelectedMember(prev => prev ? { ...prev, remarks: remarksText } : null);
+        setTimeout(() => setRemarksSaved(false), 3000);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingRemarks(false);
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -122,6 +178,17 @@ export default function Teams() {
                 <Briefcase size={10} /> {m.team_name}
               </p>
             )}
+            {m.remarks && (
+              <p className="text-[11px] text-slate-500 italic mt-2.5 line-clamp-2 px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg w-full">
+                "{m.remarks}"
+              </p>
+            )}
+            <button
+              onClick={() => openMemberProfile(m)}
+              className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-all border border-indigo-100 cursor-pointer"
+            >
+              <FileText size={12} /> Remarks & Profile
+            </button>
           </div>
         ))}
         {filtered.length === 0 && (
@@ -133,6 +200,96 @@ export default function Teams() {
           </div>
         )}
       </div>
+
+      {/* Profile & Remarks Modal */}
+      {selectedMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-slate-200 flex flex-col">
+            <div className="relative bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 text-white flex-shrink-0">
+              <button
+                onClick={() => setSelectedMember(null)}
+                className="absolute right-5 top-5 p-1.5 text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl"
+              >
+                <X size={18} />
+              </button>
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-bold text-xl flex items-center justify-center shadow-lg border border-white/20">
+                  {getInitials(selectedMember.full_name)}
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">{selectedMember.full_name}</h2>
+                  <p className="text-xs text-indigo-200 font-medium">{selectedMember.job_title || selectedMember.role}</p>
+                  <p className="text-[11px] text-white/50">{selectedMember.email}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-5 flex-1">
+              {/* Remarks */}
+              <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText size={16} className="text-indigo-600" />
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">Member Remarks</h3>
+                      <p className="text-[11px] text-slate-500">Add profile feedback, mentorship notes, or remarks.</p>
+                    </div>
+                  </div>
+                  {remarksSaved && (
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                      <Check size={12} /> Saved!
+                    </span>
+                  )}
+                </div>
+                <textarea
+                  rows={3}
+                  value={remarksText}
+                  onChange={e => setRemarksText(e.target.value)}
+                  placeholder="Enter remarks for this member..."
+                  className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-y"
+                />
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleSaveMemberRemarks}
+                    disabled={savingRemarks}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Check size={13} /> {savingRemarks ? "Saving..." : "Save Remarks"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Projects */}
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Projects</h4>
+                {loadingProfile ? (
+                  <p className="text-xs text-slate-400">Loading...</p>
+                ) : !selectedMember.projects || selectedMember.projects.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">No assigned projects.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {selectedMember.projects.map((p: any) => (
+                      <div key={p.id} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+                        <p className="font-bold text-slate-900">{p.name}</p>
+                        <p className="text-[10px] text-slate-400">{p.project_role || "Member"}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setSelectedMember(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-100"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

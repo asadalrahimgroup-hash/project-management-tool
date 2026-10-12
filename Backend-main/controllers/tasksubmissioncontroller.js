@@ -308,44 +308,15 @@ const markTaskDone = async (req, res) => {
 
         const task = result.rows[0];
 
-        // =========================================================
-        // NEW RULE 1: Task must be "Completed" first
-        // =========================================================
-        if (task.status !== 'Completed') {
-            return res.status(400).json({
-                error: 'Task must be marked as Completed by the assigned Member before it can be marked Done.'
-            });
-        }
-
-        // =========================================================
-        // NEW RULE 2: At least one work part must exist
-        // =========================================================
-        if (task.part_count === 0) {
-            return res.status(400).json({
-                error: 'Task cannot be marked as Done until at least one work part has been added.'
-            });
-        }
-
-        // =========================================================
-        // NEW RULE 3: Either a work part is Done OR a link is provided
-        // =========================================================
-        if (task.done_part_count === 0 && task.link_count === 0) {
-            return res.status(400).json({
-                error: 'Task cannot be marked as Done until at least one work part is marked Done, or at least one work submission link is provided.'
-            });
-        }
-
-        // =========================================================
-        // ALL CHECKS PASSED → UPDATE
-        // =========================================================
+        // Mark task as Completed
         await pool.query(
             'UPDATE tasks SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-            ['Done', taskId]
+            ['Completed', taskId]
         );
 
         res.json({
             success: true,
-            message: 'Task marked as Done successfully'
+            message: 'Task marked as Completed successfully'
         });
 
     } catch (error) {

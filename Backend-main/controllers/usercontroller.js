@@ -58,7 +58,8 @@ const getUsers = async (req, res) => {
         last_login_at,
         created_at,
         updated_at,
-        job_title
+        job_title,
+        remarks
       FROM users
       ORDER BY created_at DESC
     `);
@@ -91,7 +92,7 @@ const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    console.log('🔍 Fetching user by ID:', { id, user: req.user?.id });
+    console.log('?? Fetching user profile by ID:', { id, user: req.user?.id });
 
     const result = await safeQuery(
       `
@@ -104,7 +105,8 @@ const getUserById = async (req, res) => {
         last_login_at,
         created_at,
         updated_at,
-        job_title
+        job_title,
+        remarks
       FROM users
       WHERE id = $1
       `,
@@ -118,20 +120,75 @@ const getUserById = async (req, res) => {
       });
     }
 
-    console.log('✅ User found:', id);
+    const user = result.rows[0];
+
+    // Fetch assigned projects
+    const projectsRes = await safeQuery(
+      `
+      SELECT DISTINCT
+        p.id,
+        p.name,
+        p.domain,
+        p.status,
+        p.priority,
+        p.start_date,
+        p.deadline,
+        COALESCE(pm.role, CASE WHEN p.project_manager_id = $1 THEN 'Project Lead' ELSE 'Member' END) as project_role
+      FROM projects p
+      LEFT JOIN project_members pm ON p.id = pm.project_id AND pm.user_id = $1
+      WHERE pm.user_id = $1 OR p.project_manager_id = $1 OR p.created_by = $1
+      ORDER BY p.name ASC
+      `,
+      [id]
+    );
+
+    // Fetch assigned tasks
+    const tasksRes = await safeQuery(
+      `
+      SELECT 
+        t.id,
+        t.name,
+        t.title,
+        t.status,
+        t.priority,
+        t.due_date,
+        t.project_id,
+        p.name as project_name
+      FROM tasks t
+      LEFT JOIN projects p ON t.project_id = p.id
+      WHERE t.assignee_id = $1 OR t.assigned_to = $1
+      ORDER BY t.created_at DESC
+      `,
+      [id]
+    );
+
+    const tasks = tasksRes.rows;
+    const taskStats = {
+      total: tasks.length,
+      completed: tasks.filter(t => t.status === 'Completed' || t.status === 'Done').length,
+      in_progress: tasks.filter(t => t.status === 'In Progress').length,
+      to_do: tasks.filter(t => t.status === 'To Do' || t.status === 'Backlog').length,
+    };
+
+    console.log('? User profile fetched:', id, { projects: projectsRes.rows.length, tasks: tasks.length });
 
     return res.status(200).json({
       success: true,
-      user: result.rows[0],
+      user: {
+        ...user,
+        projects: projectsRes.rows,
+        tasks: tasks,
+        taskStats,
+      },
     });
 
   } catch (error) {
-    console.error("❌ Get user by ID error:", error);
+    console.error("? Get user by ID error:", error);
     console.error("Stack:", error.stack);
 
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch user.",
+      message: "Failed to fetch user profile.",
       ...(process.env.NODE_ENV !== 'production' && { error: error.message })
     });
   }
@@ -274,7 +331,7 @@ const createUser = async (req, res) => {
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { fullName, role, jobTitle, email } = req.body;
+    const { fullName, role, jobTitle, email, remarks } = req.body;
 
     console.log('🔍 Updating user:', { id, fullName, role, email, user: req.user?.id });
 
@@ -282,7 +339,7 @@ const updateUser = async (req, res) => {
        VALIDATION
     ----------------------------------------------------- */
 
-    if (!fullName && !role && !jobTitle && !email) {
+    if (!fullName && !role && !jobTitle && !email && remarks === undefined) {
       return res.status(400).json({
         success: false,
         message: "At least one field is required to update.",
@@ -330,8 +387,14 @@ const updateUser = async (req, res) => {
     }
 
     if (jobTitle !== undefined) {
-      updates.push(`job_title = $${paramIndex}`);
+      updates.push(`job_title = ${paramIndex}`);
       values.push(jobTitle?.trim() || null);
+      paramIndex++;
+    }
+
+    if (remarks !== undefined) {
+      updates.push(`remarks = ${paramIndex}`);
+      values.push(remarks?.trim() || '');
       paramIndex++;
     }
 
@@ -372,7 +435,8 @@ const updateUser = async (req, res) => {
         last_login_at,
         created_at,
         updated_at,
-        job_title
+        job_title,
+        remarks
     `;
 
     const result = await safeQuery(query, values);
@@ -608,6 +672,52 @@ const getUserStats = async (req, res) => {
   }
 };
 
+
+/* =========================================================
+   UPDATE USER REMARKS
+   PATCH /api/users/:id/remarks
+========================================================= */
+
+const updateUserRemarks = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { remarks } = req.body;
+
+    console.log('?? Updating user remarks:', { id, remarks, byUser: req.user?.id });
+
+    // Verify user exists
+    const check = await safeQuery(`SELECT id, full_name FROM users WHERE id = $1`, [id]);
+    if (check.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    const result = await safeQuery(
+      `
+      UPDATE users
+      SET remarks = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING id, full_name, email, role, job_title, remarks, is_active
+      `,
+      [remarks !== undefined ? remarks : '', id]
+    );
+
+    console.log('? Remarks saved for user:', id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Remarks updated successfully.",
+      user: result.rows[0],
+    });
+  } catch (error) {
+    console.error("? Update user remarks error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update remarks.",
+      ...(process.env.NODE_ENV !== 'production' && { error: error.message })
+    });
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
@@ -616,4 +726,5 @@ module.exports = {
   updateUserStatus,
   deleteUser,
   getUserStats,
+  updateUserRemarks,
 };

@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { useProgram } from "@/context/ProgramContext";
 import { API_BASE } from "@/lib/api";
 
-type TaskStatus = "To Do" | "In Progress" | "Completed" | "Done";
+type TaskStatus = "To Do" | "In Progress" | "Completed";
 type Priority = "Low" | "Medium" | "High";
 
 type Task = {
@@ -91,7 +91,7 @@ type Challenge = {
   created_at: string;
 };
 
-const STATUSES: TaskStatus[] = ["To Do", "In Progress", "Completed", "Done"];
+const STATUSES: TaskStatus[] = ["To Do", "In Progress", "Completed"];
 
 const STATUS_CONFIG: Record<TaskStatus, { badge: string; dot: string; border: string; icon: React.ElementType }> = {
   "To Do": {
@@ -107,12 +107,6 @@ const STATUS_CONFIG: Record<TaskStatus, { badge: string; dot: string; border: st
     icon: Clock
   },
   "Completed": {
-    badge: "bg-amber-50 text-amber-700 border-amber-200",
-    dot: "bg-amber-500",
-    border: "border-amber-200",
-    icon: AlertCircle
-  },
-  "Done": {
     badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
     dot: "bg-emerald-500",
     border: "border-emerald-200",
@@ -385,26 +379,12 @@ export default function Tasks() {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    // Client-side quick role validations
-    if (!isManager && targetStatus === "Done") {
-      alert("Members cannot directly mark tasks as Done. Mark the task as Completed first so your Project Manager can review and finalize it.");
-      return;
-    }
-
     try {
-      let endpoint = `${API_BASE}/tasks/${taskId}/status`;
-      let method = "PATCH";
-      let body: any = { status: targetStatus };
-
-      if (targetStatus === "Done") {
-        endpoint = `${API_BASE}/tasks/${taskId}/mark-done`;
-        body = {};
-      }
-
+      const endpoint = `${API_BASE}/tasks/${taskId}/status`;
       const res = await fetch(endpoint, {
-        method,
+        method: "PATCH",
         headers: getHeaders(),
-        body: JSON.stringify(body),
+        body: JSON.stringify({ status: targetStatus }),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -746,9 +726,9 @@ export default function Tasks() {
       total: baseTasks.length,
       todo: baseTasks.filter(t => t.status === "To Do").length,
       inProgress: baseTasks.filter(t => t.status === "In Progress").length,
-      completed: baseTasks.filter(t => t.status === "Completed").length,
-      done: baseTasks.filter(t => t.status === "Done").length,
-      overdue: baseTasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== "Done").length,
+      completed: baseTasks.filter(t => t.status === "Completed" || (t.status as any) === "Done").length,
+      done: baseTasks.filter(t => t.status === "Completed" || (t.status as any) === "Done").length,
+      overdue: baseTasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== "Completed" && (t.status as any) !== "Done").length,
     };
   }, [tasks, projects, selectedProgram, getProjectProgram]);
 
@@ -813,7 +793,7 @@ export default function Tasks() {
       </div>
 
       {/* ── Status Metrics Bar ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 shadow-sm">
           <span className="text-xs font-semibold text-slate-500">Total Tasks</span>
           <p className="text-2xl font-bold text-slate-900 mt-0.5">{taskStats.total}</p>
@@ -832,19 +812,12 @@ export default function Tasks() {
           </div>
           <p className="text-2xl font-bold text-blue-900 mt-0.5">{taskStats.inProgress}</p>
         </div>
-        <div className="bg-white border border-amber-200/80 bg-amber-50/20 rounded-xl p-3.5 shadow-sm">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-amber-500" />
-            <span className="text-xs font-semibold text-amber-700">Completed (Review)</span>
-          </div>
-          <p className="text-2xl font-bold text-amber-900 mt-0.5">{taskStats.completed}</p>
-        </div>
         <div className="bg-white border border-emerald-200/80 bg-emerald-50/20 rounded-xl p-3.5 shadow-sm">
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="text-xs font-semibold text-emerald-700">Done</span>
+            <span className="text-xs font-semibold text-emerald-700">Completed</span>
           </div>
-          <p className="text-2xl font-bold text-emerald-900 mt-0.5">{taskStats.done}</p>
+          <p className="text-2xl font-bold text-emerald-900 mt-0.5">{taskStats.completed}</p>
         </div>
       </div>
 
@@ -903,8 +876,8 @@ export default function Tasks() {
       {view === "board" && (
         <div className="flex gap-4 overflow-x-auto pb-6 -mx-6 px-6 lg:-mx-8 lg:px-8 min-h-[620px] items-start">
           {STATUSES.map(colStatus => {
-            const colTasks = filteredTasks.filter(t => t.status === colStatus);
-            const conf = STATUS_CONFIG[colStatus];
+            const colTasks = filteredTasks.filter(t => t.status === colStatus || (colStatus === "Completed" && (t.status as any) === "Done"));
+            const conf = STATUS_CONFIG[colStatus] || STATUS_CONFIG["Completed"];
 
             return (
               <div key={colStatus} className="flex-1 min-w-[300px] max-w-[380px] bg-slate-50/75 border border-slate-200/80 rounded-2xl p-3.5 flex flex-col max-h-[820px]">
@@ -928,7 +901,7 @@ export default function Tasks() {
                   ) : (
                     colTasks.map(task => {
                       const days = daysUntil(task.due_date);
-                      const isLate = days !== null && days < 0 && task.status !== "Done";
+                      const isLate = days !== null && days < 0 && task.status !== "Completed" && (task.status as any) !== "Done";
 
                       return (
                         <div
@@ -1035,9 +1008,9 @@ export default function Tasks() {
                   </tr>
                 ) : (
                   filteredTasks.map(task => {
-                    const conf = STATUS_CONFIG[task.status];
+                    const conf = STATUS_CONFIG[task.status] || STATUS_CONFIG["Completed"];
                     const days = daysUntil(task.due_date);
-                    const isLate = days !== null && days < 0 && task.status !== "Done";
+                    const isLate = days !== null && days < 0 && task.status !== "Completed" && (task.status as any) !== "Done";
 
                     return (
                       <tr
@@ -1125,7 +1098,7 @@ export default function Tasks() {
                   <select
                     value={selectedTask.status}
                     onChange={e => handleUpdateStatus(selectedTask.id, e.target.value as TaskStatus)}
-                    className={`text-xs font-bold px-2 py-0.5 rounded-md border cursor-pointer ${STATUS_CONFIG[selectedTask.status].badge}`}
+                    className={`text-xs font-bold px-2 py-0.5 rounded-md border cursor-pointer ${(STATUS_CONFIG[selectedTask.status] || STATUS_CONFIG["Completed"]).badge}`}
                   >
                     {STATUSES.map(s => (
                       <option key={s} value={s}>{s}</option>

@@ -88,15 +88,15 @@ export default function Performance() {
     </div>
   );
 
-  const done = tasks.filter(t => t.status === "Done").length;
+  const done = tasks.filter(t => t.status === "Completed" || t.status === "Done").length;
   const rate = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0;
-  const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== "Done").length;
+  const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== "Completed" && t.status !== "Done").length;
   const activeProjects = projects.filter(p => !["completed", "done"].includes((p.status || "").toLowerCase()));
 
   // Per-member stats
   const memberStats = members.map(m => {
     const mt = tasks.filter(t => t.assignee_id === m.id || t.assignee_name === m.full_name);
-    const mDone = mt.filter(t => t.status === "Done").length;
+    const mDone = mt.filter(t => t.status === "Completed" || t.status === "Done").length;
     return { ...m, total: mt.length, done: mDone, rate: mt.length > 0 ? Math.round((mDone / mt.length) * 100) : 0 };
   }).sort((a, b) => b.done - a.done);
 

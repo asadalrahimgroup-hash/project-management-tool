@@ -280,7 +280,7 @@ export default function Dashboard() {
 
   // General project manager & platform statistics
   const pmStats = useMemo(() => {
-    const done = scopedTasks.filter((t) => t.status === "Done").length;
+    const done = scopedTasks.filter((t) => t.status === "Completed" || t.status === "Done").length;
     const completedPendingReview = scopedTasks.filter((t) => t.status === "Completed").length;
     const inProgress = scopedTasks.filter((t) => t.status === "In Progress").length;
     const todo = scopedTasks.filter((t) => t.status === "To Do" || !t.status).length;
@@ -299,7 +299,7 @@ export default function Dashboard() {
 
   const memberStats = useMemo(() => {
     const total = memberTasks.length;
-    const done = memberTasks.filter((t) => t.status === "Done").length;
+    const done = memberTasks.filter((t) => t.status === "Completed" || t.status === "Done").length;
     const completedPendingReview = memberTasks.filter((t) => t.status === "Completed").length;
     const inProgress = memberTasks.filter((t) => t.status === "In Progress").length;
     const todo = memberTasks.filter((t) => t.status === "To Do" || !t.status).length;
@@ -334,7 +334,7 @@ export default function Dashboard() {
   const memberWorkload = useMemo(() => {
     return teamMembers.map((m) => {
       const mt = scopedTasks.filter((t) => t.assignee_id === m.id || t.assignee_name === m.full_name);
-      const done = mt.filter((t) => t.status === "Done").length;
+      const done = mt.filter((t) => t.status === "Completed" || t.status === "Done").length;
       return { ...m, total: mt.length, done, rate: mt.length > 0 ? Math.round((done / mt.length) * 100) : 0 };
     }).filter(m => !selectedProgram || m.total > 0).sort((a, b) => b.total - a.total).slice(0, 6);
   }, [teamMembers, scopedTasks, selectedProgram]);
@@ -633,7 +633,7 @@ export default function Dashboard() {
                   label={`${pmStats.rate}%`}
                   sublabel="Verified Done"
                   segments={[
-                    { value: pmStats.done, color: "#10b981", label: "Done" },
+                    { value: pmStats.done, color: "#10b981", label: "Completed" },
                     { value: pmStats.completedPendingReview, color: "#f59e0b", label: "Completed" },
                     { value: pmStats.inProgress, color: "#6366f1", label: "In Progress" },
                     { value: pmStats.todo, color: "#e2e8f0", label: "To Do" },
@@ -706,7 +706,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {scopedProjects.map((p, i) => {
                 const projectTasks = tasks.filter((t) => t.project_id === p.id);
-                const doneTasks = projectTasks.filter((t) => t.status === "Done").length;
+                const doneTasks = projectTasks.filter((t) => t.status === "Completed" || t.status === "Done").length;
                 const prog = projectTasks.length > 0 
                   ? Math.round((doneTasks / projectTasks.length) * 100) 
                   : (["unassigned", "not started"].includes((p.status || "").toLowerCase()) ? 0 : (p.progress || 0));
@@ -841,7 +841,7 @@ export default function Dashboard() {
                     const days = daysUntil(p.deadline);
                     const isLate = days !== null && days < 0 && !["completed", "done"].includes((p.status || "").toLowerCase());
                     const projectTasks = tasks.filter((t) => t.project_id === p.id);
-                    const doneTasks = projectTasks.filter((t) => t.status === "Done").length;
+                    const doneTasks = projectTasks.filter((t) => t.status === "Completed" || t.status === "Done").length;
                     const prog = projectTasks.length > 0 
                       ? Math.round((doneTasks / projectTasks.length) * 100) 
                       : (["unassigned", "not started"].includes((p.status || "").toLowerCase()) ? 0 : (p.progress || 0));
@@ -1024,7 +1024,7 @@ export default function Dashboard() {
                     label={`${memberStats.rate}%`}
                     sublabel="Completed"
                     segments={[
-                      { value: memberStats.done, color: "#10b981", label: "Done" },
+                      { value: memberStats.done, color: "#10b981", label: "Completed" },
                       { value: memberStats.completedPendingReview, color: "#f59e0b", label: "Completed" },
                       { value: memberStats.inProgress, color: "#6366f1", label: "In Progress" },
                       { value: memberStats.todo, color: "#cbd5e1", label: "To Do" },
@@ -1032,7 +1032,7 @@ export default function Dashboard() {
                   />
                   <div className="space-y-2">
                     {[
-                      { label: "Done", value: memberStats.done, color: "#10b981" },
+                      { label: "Completed", value: memberStats.done, color: "#10b981" },
                       { label: "In Review", value: memberStats.completedPendingReview, color: "#f59e0b" },
                       { label: "In Progress", value: memberStats.inProgress, color: "#6366f1" },
                       { label: "To Do", value: memberStats.todo, color: "#cbd5e1" },
@@ -1097,7 +1097,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {scopedProjects.map((p, i) => {
                 const projectTasks = tasks.filter((t) => t.project_id === p.id);
-                const doneTasks = projectTasks.filter((t) => t.status === "Done").length;
+                const doneTasks = projectTasks.filter((t) => t.status === "Completed" || t.status === "Done").length;
                 const prog = projectTasks.length > 0 
                   ? Math.round((doneTasks / projectTasks.length) * 100) 
                   : (["unassigned", "not started"].includes((p.status || "").toLowerCase()) ? 0 : (p.progress || 0));

@@ -326,7 +326,7 @@ export default function ProjectDetail() {
   };
 
   const stats = useMemo(() => {
-    const done = tasks.filter(t => t.status === "Done").length;
+    const done = tasks.filter(t => t.status === "Completed" || t.status === "Done").length;
     const inProgress = tasks.filter(t => t.status === "In Progress").length;
     const review = tasks.filter(t => t.status === "Review").length;
     const todo = tasks.filter(t => t.status === "To Do" || !t.status).length;
@@ -488,7 +488,7 @@ export default function ProjectDetail() {
               />
               <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 w-full">
                 {[
-                  { label: "Done", value: stats.done, color: "#10b981" },
+                  { label: "Completed", value: stats.done, color: "#10b981" },
                   { label: "In Progress", value: stats.inProgress, color: "#6366f1" },
                   { label: "Review", value: stats.review, color: "#8b5cf6" },
                   { label: "To Do", value: stats.todo, color: "#e2e8f0" },
@@ -534,7 +534,7 @@ export default function ProjectDetail() {
               {/* Per-status segments */}
               <div className="space-y-3 mt-2">
                 {[
-                  { label: "Done", count: stats.done, color: "#10b981" },
+                  { label: "Completed", count: stats.done, color: "#10b981" },
                   { label: "In Progress", count: stats.inProgress, color: "#6366f1" },
                   { label: "Review", count: stats.review, color: "#8b5cf6" },
                   { label: "To Do", count: stats.todo, color: "#e2e8f0" },
@@ -691,8 +691,8 @@ export default function ProjectDetail() {
           </div>
 
           {/* Kanban-style column summary */}
-          <div className="grid grid-cols-4 border-b border-gray-50">
-            {(["To Do", "In Progress", "Review", "Done"] as const).map(col => {
+          <div className="grid grid-cols-3 border-b border-gray-50">
+            {(["To Do", "In Progress", "Completed"] as const).map(col => {
               const cfg = STATUS_CONFIG[col];
               const count = tasks.filter(t => (t.status || "To Do") === col).length;
               return (
@@ -728,11 +728,11 @@ export default function ProjectDetail() {
                   const st = t.status || "To Do";
                   const cfg = STATUS_CONFIG[st] || STATUS_CONFIG["To Do"];
                   const days = daysUntil(t.due_date);
-                  const isLate = days !== null && days < 0 && st !== "Done";
+                  const isLate = days !== null && days < 0 && st !== "Completed" && st !== "Done";
                   return (
                     <tr key={t.id} className="hover:bg-gray-50/60 transition-colors">
                       <td className="py-3 px-6">
-                        <p className={`text-[13px] font-medium ${st === "Done" ? "line-through text-gray-400" : "text-gray-800"}`}>
+                        <p className={`text-[13px] font-medium ${(st === "Completed" || st === "Done") ? "line-through text-gray-400" : "text-gray-800"}`}>
                           {t.name || t.title}
                         </p>
                       </td>
@@ -784,7 +784,7 @@ export default function ProjectDetail() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
               {stats.assignees.map(name => {
                 const mt = tasks.filter(t => t.assignee_name === name);
-                const done = mt.filter(t => t.status === "Done").length;
+                const done = mt.filter(t => t.status === "Completed" || t.status === "Done").length;
                 const rate = mt.length > 0 ? Math.round((done / mt.length) * 100) : 0;
                 return (
                   <div key={name} className="flex flex-col items-center text-center p-3 rounded-xl hover:bg-gray-50 transition-colors">
@@ -797,7 +797,7 @@ export default function ProjectDetail() {
                       </div>
                     </div>
                     <p className="text-[12px] font-bold text-gray-800 leading-tight line-clamp-1">{name}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">{done}/{mt.length} done</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{done}/{mt.length} completed</p>
                   </div>
                 );
               })}

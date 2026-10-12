@@ -4,8 +4,11 @@ const router = express.Router();
 
 const {
   getUsers,
+  getUserById,
   createUser,
+  updateUser,
   updateUserStatus,
+  updateUserRemarks,
   deleteUser,
 } = require("../controllers/usercontroller");
 
@@ -16,7 +19,7 @@ const { authenticate } = require("../middleware/authMiddleware");
 const requireSystemAdministrator = require("../middleware/adminMiddleware");
 
 /* =========================================================
-   SYSTEM ADMINISTRATOR USER MANAGEMENT
+   USER MANAGEMENT & PROFILES
 ========================================================= */
 
 router.get(
@@ -24,6 +27,12 @@ router.get(
   authenticate,
   requireSystemAdministrator,
   getUsers
+);
+
+router.get(
+  "/:id",
+  authenticate,
+  getUserById
 );
 
 router.post(
@@ -34,10 +43,23 @@ router.post(
 );
 
 router.patch(
+  "/:id/remarks",
+  authenticate,
+  updateUserRemarks
+);
+
+router.patch(
   "/:id/status",
   authenticate,
   requireSystemAdministrator,
   updateUserStatus
+);
+
+router.patch(
+  "/:id",
+  authenticate,
+  requireSystemAdministrator,
+  updateUser
 );
 
 router.delete(

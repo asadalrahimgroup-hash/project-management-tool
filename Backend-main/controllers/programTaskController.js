@@ -451,11 +451,11 @@ const updateProgramTaskStatus = async (req, res) => {
         const { taskId } = req.params;
         const { status } = req.body;
 
-        const ALLOWED = ["To Do", "In Progress", "Completed", "Done"];
+        const ALLOWED = ["To Do", "In Progress", "Completed"];
         if (!ALLOWED.includes(status)) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid status.",
+                message: "Invalid status. Allowed statuses: To Do, In Progress, Completed",
             });
         }
 
@@ -475,24 +475,6 @@ const updateProgramTaskStatus = async (req, res) => {
             return res.status(403).json({
                 success: false,
                 message: "Not authorized to change this task.",
-            });
-        }
-
-        // Member rules: cannot set Done
-        if (req.user.role === "Member" && status === "Done") {
-            return res.status(403).json({
-                success: false,
-                message:
-                    "Members cannot mark program tasks as Done. Please mark it Completed and the manager will review.",
-            });
-        }
-
-        // Managers can only set Done if task is Completed
-        if (isManager && status === "Done" && task.status !== "Completed") {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Task must be marked Completed by the assignee before it can be marked Done.",
             });
         }
 
@@ -1134,7 +1116,7 @@ const getMyProgramProjects = async (req, res) => {
                 (
                     SELECT COUNT(*)::int
                     FROM program_project_tasks
-                    WHERE program_project_id = pp.id AND status = 'Done'
+                    WHERE program_project_id = pp.id AND status IN ('Completed', 'Done')
                 ) AS completed_task_count,
                 (
                     SELECT COUNT(*)::int
@@ -1146,7 +1128,7 @@ const getMyProgramProjects = async (req, res) => {
                     FROM program_project_tasks
                     WHERE program_project_id = pp.id
                       AND assignee_id = $1
-                      AND status = 'Done'
+                      AND status IN ('Completed', 'Done')
                 ) AS my_completed_task_count
             FROM program_project_members ppm
             JOIN program_projects pp ON pp.id = ppm.program_project_id

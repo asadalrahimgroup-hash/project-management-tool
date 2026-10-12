@@ -5,7 +5,7 @@ import {
   Users, FolderKanban, Layers, Plus, Search, ShieldCheck,
   CheckCircle2, AlertCircle, Clock, Calendar, Mail,
   UserPlus, Sparkles, Filter, RefreshCw, ChevronRight,
-  ExternalLink, UserCheck, Trash2, X, Lock, Building, Tag,
+  ExternalLink, UserCheck, Trash2, X, Lock, Building, Tag, FileText, Eye, Check, TrendingUp, Activity, Briefcase,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
@@ -18,8 +18,17 @@ type UserItem = {
   email: string;
   role: string;
   job_title?: string;
+  remarks?: string;
   is_active: boolean;
   created_at?: string;
+  projects?: any[];
+  tasks?: any[];
+  taskStats?: {
+    total: number;
+    completed: number;
+    in_progress: number;
+    to_do: number;
+  };
 };
 
 type ProgramItem = {
@@ -105,6 +114,67 @@ export default function AdminDashboard() {
     startDate: "",
     endDate: "",
   });
+
+  // Member Profile & Remarks Modal State
+  const [selectedProfileUser, setSelectedProfileUser] = useState<UserItem | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [userRemarksText, setUserRemarksText] = useState("");
+  const [savingRemarks, setSavingRemarks] = useState(false);
+  const [remarksSuccess, setRemarksSuccess] = useState(false);
+
+  const openProfileModal = async (u: UserItem) => {
+    setSelectedProfileUser(u);
+    setUserRemarksText(u.remarks || "");
+    setRemarksSuccess(false);
+    setLoadingProfile(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/users/${u.id}`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const d = await res.json();
+        const profileData = d.user || d.data || d;
+        setSelectedProfileUser(prev => ({
+          ...prev!,
+          ...profileData,
+          remarks: profileData.remarks !== undefined ? profileData.remarks : prev?.remarks
+        }));
+        setUserRemarksText(profileData.remarks || "");
+      }
+    } catch (err) {
+      console.error("Failed to load user profile", err);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  const handleSaveRemarks = async () => {
+    if (!selectedProfileUser) return;
+    setSavingRemarks(true);
+    setRemarksSuccess(false);
+
+    try {
+      const res = await fetch(`${API_BASE}/users/${selectedProfileUser.id}/remarks`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ remarks: userRemarksText }),
+      });
+
+      if (res.ok) {
+        setRemarksSuccess(true);
+        // Update local state in usersList
+        setUsersList(prev => prev.map(usr => usr.id === selectedProfileUser.id ? { ...usr, remarks: userRemarksText } : usr));
+        setSelectedProfileUser(prev => prev ? { ...prev, remarks: userRemarksText } : null);
+        setTimeout(() => setRemarksSuccess(false), 3000);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || data.error || "Failed to save remarks");
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to save remarks");
+    } finally {
+      setSavingRemarks(false);
+    }
+  };
 
   // Project Form
   const [projectForm, setProjectForm] = useState({
@@ -712,13 +782,14 @@ export default function AdminDashboard() {
                   <th className="py-3 px-4">Role</th>
                   <th className="py-3 px-4">Job Title</th>
                   <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Remarks & Profile</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-slate-400 text-xs">
+                    <td colSpan={6} className="py-12 text-center text-slate-400 text-xs">
                       No members matched criteria.
                     </td>
                   </tr>
@@ -757,7 +828,33 @@ export default function AdminDashboard() {
                           {u.is_active ? "Active" : "Inactive"}
                         </span>
                       </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2 max-w-xs">
+                          <button
+                            onClick={() => openProfileModal(u)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200/60 transition-all flex-shrink-0 cursor-pointer shadow-2xs"
+                            title="View Profile and Add/Edit Remarks"
+                          >
+                            <FileText size={12} />
+                            <span>Remarks</span>
+                          </button>
+                          <div 
+                            onClick={() => openProfileModal(u)}
+                            className="text-xs text-slate-600 truncate cursor-pointer hover:text-indigo-600 italic max-w-[170px]"
+                            title={u.remarks || "No remarks added yet. Click to view profile and add remarks."}
+                          >
+                            {u.remarks ? `"${u.remarks}"` : <span className="text-slate-300 not-italic text-[11px]">No remarks</span>}
+                          </div>
+                        </div>
+                      </td>
                       <td className="py-3 px-4 text-right flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => openProfileModal(u)}
+                          title="View Full Profile & Remarks"
+                          className="text-slate-500 hover:text-indigo-600 p-1.5 rounded-lg hover:bg-indigo-50 transition-colors flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
+                        >
+                          <Eye size={13} />
+                        </button>
                         <button
                           onClick={() => handleToggleUserStatus(u)}
                           className="text-[11px] font-semibold text-slate-500 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 cursor-pointer"
@@ -1261,6 +1358,209 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- MEMBER PROFILE & REMARKS MODAL ---------------- */}
+      {selectedProfileUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-slate-200 flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="relative bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 text-white flex-shrink-0">
+              <button
+                onClick={() => setSelectedProfileUser(null)}
+                className="absolute right-5 top-5 p-1.5 text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-xl transition-all"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-extrabold text-2xl flex items-center justify-center shadow-lg border-2 border-white/20 flex-shrink-0">
+                  {getInitials(selectedProfileUser.full_name)}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-xl font-bold tracking-tight truncate">{selectedProfileUser.full_name}</h2>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/15 text-indigo-200 border border-white/10">
+                      {selectedProfileUser.role}
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                      selectedProfileUser.is_active ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-500/20 text-slate-300"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${selectedProfileUser.is_active ? "bg-emerald-400" : "bg-slate-400"}`} />
+                      {selectedProfileUser.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-indigo-200/80 font-medium mt-0.5">{selectedProfileUser.job_title || "Specialist"}</p>
+                  <p className="text-[11px] text-white/50 mt-0.5 truncate">{selectedProfileUser.email}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {/* Quick KPI stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 text-center">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Tasks</p>
+                  <p className="text-xl font-bold text-slate-900 mt-0.5">
+                    {selectedProfileUser.taskStats?.total ?? (selectedProfileUser.tasks?.length || 0)}
+                  </p>
+                </div>
+                <div className="bg-emerald-50/60 border border-emerald-200/70 rounded-2xl p-3.5 text-center">
+                  <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Completed</p>
+                  <p className="text-xl font-bold text-emerald-700 mt-0.5">
+                    {selectedProfileUser.taskStats?.completed ?? 0}
+                  </p>
+                </div>
+                <div className="bg-blue-50/60 border border-blue-200/70 rounded-2xl p-3.5 text-center">
+                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">In Progress</p>
+                  <p className="text-xl font-bold text-blue-700 mt-0.5">
+                    {selectedProfileUser.taskStats?.in_progress ?? 0}
+                  </p>
+                </div>
+                <div className="bg-purple-50/60 border border-purple-200/70 rounded-2xl p-3.5 text-center">
+                  <p className="text-xs font-semibold text-purple-600 uppercase tracking-wider">Projects</p>
+                  <p className="text-xl font-bold text-purple-700 mt-0.5">
+                    {selectedProfileUser.projects?.length || 0}
+                  </p>
+                </div>
+              </div>
+
+              {/* Remarks Section */}
+              <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText size={16} className="text-indigo-600" />
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">Remarks & Evaluations</h3>
+                      <p className="text-[11px] text-slate-500">Record remarks, feedback, or performance notes for this member.</p>
+                    </div>
+                  </div>
+                  {remarksSuccess && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full animate-in fade-in">
+                      <Check size={12} /> Remarks Saved!
+                    </span>
+                  )}
+                </div>
+
+                <textarea
+                  rows={3}
+                  value={userRemarksText}
+                  onChange={e => setUserRemarksText(e.target.value)}
+                  placeholder="Enter remarks about this member (e.g. 'Strong in AI RAG pipeline, proactive in sprint deliverables, recommended for team lead')..."
+                  className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-y placeholder:text-slate-400 font-medium"
+                />
+
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    Remarks are visible to management and persist in the database.
+                  </p>
+                  <button
+                    onClick={handleSaveRemarks}
+                    disabled={savingRemarks}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm shadow-indigo-200 transition-all cursor-pointer"
+                  >
+                    {savingRemarks ? (
+                      <>
+                        <div className="w-3 h-3 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Check size={13} />
+                        Save Remarks
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Assigned Projects */}
+              <div>
+                <div className="flex items-center gap-2 mb-2.5">
+                  <FolderKanban size={15} className="text-slate-600" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Assigned Projects ({selectedProfileUser.projects?.length || 0})
+                  </h3>
+                </div>
+
+                {loadingProfile ? (
+                  <div className="py-6 text-center text-xs text-slate-400">Loading projects & tasks...</div>
+                ) : !selectedProfileUser.projects || selectedProfileUser.projects.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    Not currently assigned to any active project.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {selectedProfileUser.projects.map((proj: any) => (
+                      <div key={proj.id} className="p-3 bg-white border border-slate-200 rounded-xl hover:border-slate-300 transition-all space-y-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-slate-900 truncate">{proj.name}</p>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                            {proj.project_role || "Member"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                          <span>{proj.domain || "General"}</span>
+                          <span>�</span>
+                          <span className="font-semibold text-slate-600">{proj.status || "Active"}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Assigned Tasks */}
+              <div>
+                <div className="flex items-center gap-2 mb-2.5">
+                  <CheckCircle2 size={15} className="text-slate-600" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Assigned Tasks ({selectedProfileUser.tasks?.length || 0})
+                  </h3>
+                </div>
+
+                {!selectedProfileUser.tasks || selectedProfileUser.tasks.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    No tasks currently assigned to this member.
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {selectedProfileUser.tasks.slice(0, 10).map((tsk: any) => (
+                      <div key={tsk.id} className="flex items-center justify-between p-2.5 bg-slate-50/70 border border-slate-200/70 rounded-xl text-xs gap-3">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900 truncate">{tsk.name || tsk.title}</p>
+                          <p className="text-[10px] text-slate-400 truncate">{tsk.project_name || "Project"}</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                            tsk.status === "Completed" || tsk.status === "Done"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : tsk.status === "In Progress"
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : "bg-slate-100 text-slate-600 border-slate-200"
+                          }`}>
+                            {tsk.status === "Done" ? "Completed" : tsk.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end flex-shrink-0">
+              <button
+                onClick={() => setSelectedProfileUser(null)}
+                className="px-5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-all cursor-pointer"
+              >
+                Close Profile
+              </button>
+            </div>
           </div>
         </div>
       )}

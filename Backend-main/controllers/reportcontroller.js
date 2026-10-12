@@ -251,7 +251,7 @@ const getReportOverview = async (req, res) => {
                 r.updated_at AS report_updated_at,
 
                 COUNT(DISTINCT t.id) AS total_tasks,
-                COUNT(DISTINCT CASE WHEN t.status = 'Done' THEN t.id END) AS completed_tasks
+                COUNT(DISTINCT CASE WHEN t.status IN ('Completed', 'Done') THEN t.id END) AS completed_tasks
 
             FROM projects p
 

@@ -481,10 +481,10 @@ const updateTaskStatus = async (req, res) => {
         // =========================================================
         // VALIDATE STATUS
         // =========================================================
-        if (!["To Do", "In Progress", "Completed", "Done", "Backlog"].includes(status)) {
+        if (!["To Do", "In Progress", "Completed", "Backlog"].includes(status)) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid status. Must be 'To Do', 'In Progress', 'Completed', 'Done', or 'Backlog'."
+                message: "Invalid status. Must be 'To Do', 'In Progress', 'Completed', or 'Backlog'."
             });
         }
 
@@ -956,7 +956,7 @@ const getMyProjects = async (req, res) => {
                 p.priority,
                 COUNT(t.id)::int as total_tasks,
                 COUNT(CASE WHEN t.assignee_id = $1 THEN 1 END)::int as my_tasks,
-                COUNT(CASE WHEN t.status = 'Done' AND t.assignee_id = $1 THEN 1 END)::int as my_completed_tasks
+                COUNT(CASE WHEN (t.status = 'Completed' OR t.status = 'Done') AND t.assignee_id = $1 THEN 1 END)::int as my_completed_tasks
             FROM projects p
             LEFT JOIN tasks t ON p.id = t.project_id
             WHERE t.assignee_id = $1

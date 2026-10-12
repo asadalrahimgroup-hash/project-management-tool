@@ -87,7 +87,7 @@ const getProjects = async (req, res) => {
                 SELECT 
                     project_id,
                     COUNT(*)::integer AS total_tasks,
-                    COUNT(CASE WHEN status = 'Done' THEN 1 END)::integer AS completed_tasks
+                    COUNT(CASE WHEN status = 'Completed' OR status = 'Done' THEN 1 END)::integer AS completed_tasks
                 FROM tasks
                 GROUP BY project_id
             ) tc ON tc.project_id = p.id

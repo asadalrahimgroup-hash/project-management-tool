@@ -332,14 +332,14 @@ const getDashboardTaskStats = async (req, res) => {
         const statsResult = await safeQuery(`
             SELECT 
                 COUNT(*) as total_tasks,
-                COUNT(CASE WHEN status = 'Done' THEN 1 END) as completed_tasks,
+                COUNT(CASE WHEN status IN ('Completed', 'Done') THEN 1 END) as completed_tasks,
                 COUNT(CASE WHEN status = 'In Progress' THEN 1 END) as in_progress_tasks,
                 COUNT(CASE WHEN status = 'To Do' THEN 1 END) as todo_tasks,
                 COUNT(CASE WHEN status = 'Backlog' THEN 1 END) as backlog_tasks,
                 COALESCE(AVG(
                     CASE 
                         WHEN due_date IS NOT NULL 
-                        AND status != 'Done' 
+                        AND status NOT IN ('Completed', 'Done') 
                         AND due_date < CURRENT_DATE 
                         THEN 1 
                         ELSE 0 
@@ -455,7 +455,7 @@ const getCompleteDashboard = async (req, res) => {
             safeQuery(`
                 SELECT 
                     COUNT(*) as total_tasks,
-                    COUNT(CASE WHEN status = 'Done' THEN 1 END) as completed_tasks,
+                    COUNT(CASE WHEN status IN ('Completed', 'Done') THEN 1 END) as completed_tasks,
                     COUNT(CASE WHEN status = 'In Progress' THEN 1 END) as in_progress_tasks,
                     COUNT(CASE WHEN status = 'To Do' THEN 1 END) as todo_tasks,
                     COUNT(CASE WHEN status = 'Backlog' THEN 1 END) as backlog_tasks
@@ -552,7 +552,7 @@ const getManagerDashboard = async (req, res) => {
                     p.start_date, p.deadline, p.created_at,
                     COALESCE(u.full_name, 'Unassigned') as manager_name,
                     COUNT(t.id)::int as total_tasks,
-                    COUNT(CASE WHEN t.status = 'Done' THEN 1 END)::int as done_tasks
+                    COUNT(CASE WHEN t.status IN ('Completed', 'Done') THEN 1 END)::int as done_tasks
                 FROM projects p
                 LEFT JOIN users u ON p.project_manager_id = u.id
                 LEFT JOIN tasks t ON p.id = t.project_id
@@ -565,11 +565,11 @@ const getManagerDashboard = async (req, res) => {
             safeQuery(`
                 SELECT 
                     COUNT(t.id)::int as total_tasks,
-                    COUNT(CASE WHEN t.status = 'Done' THEN 1 END)::int as done_tasks,
+                    COUNT(CASE WHEN t.status IN ('Completed', 'Done') THEN 1 END)::int as done_tasks,
                     COUNT(CASE WHEN t.status = 'Completed' THEN 1 END)::int as completed_tasks,
                     COUNT(CASE WHEN t.status = 'In Progress' THEN 1 END)::int as in_progress_tasks,
                     COUNT(CASE WHEN t.status = 'To Do' OR t.status IS NULL THEN 1 END)::int as todo_tasks,
-                    COUNT(CASE WHEN t.due_date IS NOT NULL AND t.due_date < CURRENT_DATE AND t.status != 'Done' THEN 1 END)::int as overdue_tasks
+                    COUNT(CASE WHEN t.due_date IS NOT NULL AND t.due_date < CURRENT_DATE AND t.status NOT IN ('Completed', 'Done') THEN 1 END)::int as overdue_tasks
                 FROM tasks t
                 ${!isExecutiveOrAdmin ? "JOIN projects p ON t.project_id = p.id WHERE (p.project_manager_id = $1 OR p.created_by = $1)" : ""}
             `, projectParams),
@@ -594,9 +594,9 @@ const getManagerDashboard = async (req, res) => {
                 SELECT 
                     u.id, u.full_name, u.role, u.job_title,
                     COUNT(t.id)::int as total_tasks,
-                    COUNT(CASE WHEN t.status = 'Done' THEN 1 END)::int as done_tasks,
+                    COUNT(CASE WHEN t.status IN ('Completed', 'Done') THEN 1 END)::int as done_tasks,
                     COUNT(CASE WHEN t.status = 'In Progress' THEN 1 END)::int as in_progress_tasks,
-                    COUNT(CASE WHEN t.due_date IS NOT NULL AND t.due_date < CURRENT_DATE AND t.status != 'Done' THEN 1 END)::int as overdue_tasks
+                    COUNT(CASE WHEN t.due_date IS NOT NULL AND t.due_date < CURRENT_DATE AND t.status NOT IN ('Completed', 'Done') THEN 1 END)::int as overdue_tasks
                 FROM users u
                 JOIN tasks t ON t.assignee_id = u.id
                 ${!isExecutiveOrAdmin ? "JOIN projects p ON t.project_id = p.id AND (p.project_manager_id = $1 OR p.created_by = $1)" : ""}
@@ -701,7 +701,7 @@ const getMemberDashboard = async (req, res) => {
                 SELECT 
                     p.id, p.name, p.domain, p.status, p.deadline, p.progress,
                     COUNT(t.id)::int as my_tasks_count,
-                    COUNT(CASE WHEN t.status = 'Done' THEN 1 END)::int as my_done_count,
+                    COUNT(CASE WHEN t.status IN ('Completed', 'Done') THEN 1 END)::int as my_done_count,
                     COUNT(CASE WHEN t.status = 'In Progress' THEN 1 END)::int as my_in_progress_count
                 FROM projects p
                 JOIN tasks t ON p.id = t.project_id
@@ -725,15 +725,15 @@ const getMemberDashboard = async (req, res) => {
 
         const tasks = tasksResult.rows;
         const total = tasks.length;
-        const done = tasks.filter(t => t.status === "Done").length;
+        const done = tasks.filter(t => ["Completed", "Done"].includes(t.status)).length;
         const pendingReview = tasks.filter(t => t.status === "Completed").length;
         const inProgress = tasks.filter(t => t.status === "In Progress").length;
         const todo = tasks.filter(t => t.status === "To Do" || !t.status).length;
-        const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== "Done").length;
+        const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && !["Completed", "Done"].includes(t.status)).length;
         const rate = total > 0 ? Math.round((done / total) * 100) : 0;
 
         // Urgent focus tasks (due within 3 days or overdue, and not done)
-        const focusTasks = tasks.filter(t => t.status !== "Done").slice(0, 8);
+        const focusTasks = tasks.filter(t => !["Completed", "Done"].includes(t.status)).slice(0, 8);
 
         return res.status(200).json({
             success: true,

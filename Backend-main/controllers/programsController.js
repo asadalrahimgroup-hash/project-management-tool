@@ -53,7 +53,7 @@ const getPrograms = async (req, res) => {
                     SELECT
                         program_id,
                         COUNT(*) AS project_count,
-                        COUNT(*) FILTER (WHERE status = 'Done') AS completed_count
+                        COUNT(*) FILTER (WHERE status IN ('Completed', 'Done')) AS completed_count
                     FROM program_projects
                     GROUP BY program_id
                 ) pc ON pc.program_id = p.id
@@ -83,7 +83,7 @@ const getPrograms = async (req, res) => {
                 SELECT
                     program_id,
                     COUNT(*) AS project_count,
-                    COUNT(*) FILTER (WHERE status = 'Done') AS completed_count
+                    COUNT(*) FILTER (WHERE status IN ('Completed', 'Done')) AS completed_count
                 FROM program_projects
                 GROUP BY program_id
             ) pc ON pc.program_id = p.id

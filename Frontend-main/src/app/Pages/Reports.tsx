@@ -73,9 +73,9 @@ export default function Reports() {
     load();
   }, [router, isManager]);
 
-  const done = tasks.filter(t => t.status === "Done").length;
+  const done = tasks.filter(t => t.status === "Completed" || t.status === "Done").length;
   const inProgress = tasks.filter(t => t.status === "In Progress").length;
-  const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== "Done").length;
+  const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== "Completed" && t.status !== "Done").length;
   const completed = projects.filter(p => ["completed", "done"].includes((p.status || "").toLowerCase())).length;
   const rate = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0;
   const avgProgress = projects.length > 0 ? Math.round(projects.reduce((s, p) => s + (p.progress || 0), 0) / projects.length) : 0;
