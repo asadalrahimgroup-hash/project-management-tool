@@ -138,11 +138,15 @@ function RingProgress({ pct, color, size = 40 }: { pct: number; color: string; s
   );
 }
 
+const DEFAULT_STATUS_CFG = { label: "To Do", color: "#94a3b8", badge: "bg-gray-100 text-gray-600 border-gray-200", dot: "bg-gray-400" };
+
 const STATUS_CONFIG: Record<string, { label: string; color: string; badge: string; dot: string }> = {
   "To Do":       { label: "To Do",       color: "#94a3b8", badge: "bg-gray-100 text-gray-600 border-gray-200",       dot: "bg-gray-400" },
   "In Progress": { label: "In Progress", color: "#6366f1", badge: "bg-indigo-50 text-indigo-700 border-indigo-200",   dot: "bg-indigo-500" },
   "Review":      { label: "Review",      color: "#8b5cf6", badge: "bg-violet-50 text-violet-700 border-violet-200",   dot: "bg-violet-500" },
-  "Done":        { label: "Done",        color: "#10b981", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
+  "Completed":   { label: "Completed",   color: "#10b981", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
+  "Done":        { label: "Completed",   color: "#10b981", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
+  "Backlog":     { label: "Backlog",     color: "#64748b", badge: "bg-slate-100 text-slate-600 border-slate-200",     dot: "bg-slate-400" },
 };
 
 interface ProjectDetailProps {
@@ -779,11 +783,11 @@ export default function ProjectDetail({ initialProjectId }: ProjectDetailProps =
           {/* Kanban-style column summary */}
           <div className="grid grid-cols-3 border-b border-gray-50">
             {(["To Do", "In Progress", "Completed"] as const).map(col => {
-              const cfg = STATUS_CONFIG[col];
+              const cfg = STATUS_CONFIG[col] || DEFAULT_STATUS_CFG;
               const count = tasks.filter(t => (t.status || "To Do") === col).length;
               return (
                 <div key={col} className="py-3 px-4 text-center border-r last:border-r-0 border-gray-50">
-                  <div className={`w-2 h-2 rounded-full mx-auto mb-1.5 ${cfg.dot}`} />
+                  <div className={`w-2 h-2 rounded-full mx-auto mb-1.5 ${cfg?.dot || "bg-gray-400"}`} />
                   <p className="text-xl font-black text-gray-900">{count}</p>
                   <p className="text-[10px] font-semibold text-gray-400">{col}</p>
                 </div>
@@ -812,7 +816,7 @@ export default function ProjectDetail({ initialProjectId }: ProjectDetailProps =
                   </tr>
                 ) : tasks.map(t => {
                   const st = t.status || "To Do";
-                  const cfg = STATUS_CONFIG[st] || STATUS_CONFIG["To Do"];
+                  const cfg = STATUS_CONFIG[st] || STATUS_CONFIG[st === "Done" ? "Completed" : "To Do"] || DEFAULT_STATUS_CFG;
                   const days = daysUntil(t.due_date);
                   const isLate = days !== null && days < 0 && st !== "Completed" && st !== "Done";
                   return (
@@ -824,8 +828,8 @@ export default function ProjectDetail({ initialProjectId }: ProjectDetailProps =
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1.5">
-                          <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-lg border ${cfg.badge}`}>{st}</span>
+                          <div className={`w-1.5 h-1.5 rounded-full ${cfg?.dot || "bg-gray-400"}`} />
+                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-lg border ${cfg?.badge || "bg-gray-100 text-gray-600 border-gray-200"}`}>{st}</span>
                         </div>
                       </td>
                       <td className="py-3 px-4 hidden md:table-cell">
