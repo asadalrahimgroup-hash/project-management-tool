@@ -36,7 +36,7 @@ const getProjectTasks = async (req, res) => {
     try {
         const { projectId } = req.params;
 
-        console.log('🔍 Fetching tasks for project:', { projectId, user: req.user?.id });
+        const normalizedProjId = projectId.replace(/^pp-(proj-)?/, 'proj-');
 
         const result = await safeQuery(
             `
@@ -57,10 +57,10 @@ const getProjectTasks = async (req, res) => {
                 u.email as assignee_email
             FROM tasks t
             LEFT JOIN users u ON t.assignee_id = u.id
-            WHERE t.project_id = $1
+            WHERE t.project_id = $1 OR t.project_id = $2 OR ('pp-' || t.project_id) = $1
             ORDER BY t.created_at DESC
             `,
-            [projectId]
+            [projectId, normalizedProjId]
         );
 
         console.log(`✅ Found ${result.rows.length} tasks for project:`, projectId);

@@ -127,10 +127,15 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; badge: strin
   "Done":        { label: "Done",        color: "#10b981", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
 };
 
-export default function ProjectDetail() {
+interface ProjectDetailProps {
+  initialProjectId?: string;
+}
+
+export default function ProjectDetail({ initialProjectId }: ProjectDetailProps = {}) {
   const params = useParams();
   const router = useRouter();
-  const projectId = params?.id as string;
+  const rawId = initialProjectId || (params?.id as string);
+  const projectId = typeof rawId === "string" ? decodeURIComponent(rawId) : "";
   const { getProjectProgram, programs } = useProgram();
   const { user } = useAuth();
   const roleLower = (user?.role || "").toLowerCase();
@@ -197,7 +202,8 @@ export default function ProjectDetail() {
   };
 
   const getHeaders = (): HeadersInit => {
-    const token = localStorage.getItem("token");
+    const token =
+      (typeof window !== "undefined" && (localStorage.getItem("token") || localStorage.getItem("accessToken"))) || "";
     return { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
   };
 
@@ -205,23 +211,55 @@ export default function ProjectDetail() {
     if (!projectId) return;
     const headers = getHeaders();
     try {
-      const projRes = await fetch(`${API_BASE}/projects`, { headers });
-      if (projRes.ok) {
-        const projData = await projRes.json();
-        const all: Project[] = projData.projects || projData.data || [];
-        const found = all.find(p => String(p.id) === String(projectId));
-        if (found) setProject(found);
+      setLoading(true);
+
+      // 1. Fetch specific project directly
+      let fetchedProject: Project | null = null;
+      try {
+        const singleRes = await fetch(`${API_BASE}/projects/${encodeURIComponent(projectId)}`, { headers });
+        if (singleRes.ok) {
+          const singleData = await singleRes.json();
+          if (singleData.project) {
+            fetchedProject = singleData.project;
+          }
+        }
+      } catch (err) {
+        console.warn("Direct project fetch failed, will try fallback list:", err);
+      }
+
+      // 2. Fallback: try list of projects if direct fetch returned 404 or failed
+      if (!fetchedProject) {
+        try {
+          const projRes = await fetch(`${API_BASE}/projects`, { headers });
+          if (projRes.ok) {
+            const projData = await projRes.json();
+            const all: Project[] = projData.projects || projData.data || [];
+            const normalizedTarget = projectId.replace(/^pp-(proj-)?/, "proj-");
+            const found = all.find(p =>
+              String(p.id) === String(projectId) ||
+              String(p.id) === normalizedTarget ||
+              String(p.id).replace(/^proj-/, "") === projectId.replace(/^pp-/, "").replace(/^proj-/, "")
+            );
+            if (found) fetchedProject = found;
+          }
+        } catch (err) {
+          console.error("Fallback projects fetch error:", err);
+        }
+      }
+
+      if (fetchedProject) {
+        setProject(fetchedProject);
       }
 
       // Fetch tasks
-      const taskRes = await fetch(`${API_BASE}/tasks/project/${projectId}`, { headers });
-      if (taskRes.ok) {
+      const taskRes = await fetch(`${API_BASE}/tasks/project/${encodeURIComponent(projectId)}`, { headers }).catch(() => null);
+      if (taskRes && taskRes.ok) {
         const taskData = await taskRes.json();
         setTasks(taskData.tasks || taskData.data || []);
       }
 
       // Fetch project members
-      const pmRes = await fetch(`${API_BASE}/projects/${projectId}/members`, { headers }).catch(() => null);
+      const pmRes = await fetch(`${API_BASE}/projects/${encodeURIComponent(projectId)}/members`, { headers }).catch(() => null);
       if (pmRes?.ok) {
         const pmData = await pmRes.json();
         setProjectMembers(pmData.members || []);
@@ -345,7 +383,33 @@ export default function ProjectDetail() {
     );
   }
 
-  if (!project) return null;
+  if (!project) {
+    return (
+      <div className="min-h-[calc(100vh-56px)] flex flex-col items-center justify-center p-6 text-center bg-slate-50">
+        <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mb-4 text-indigo-500 shadow-sm">
+          <FolderKanban size={32} />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 mb-1">Project Not Found</h2>
+        <p className="text-sm text-slate-500 max-w-md mb-6">
+          The requested project ({projectId || "Unknown ID"}) could not be loaded or may belong to another workspace.
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => loadProjectData()}
+            className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-2xs cursor-pointer"
+          >
+            Retry Loading
+          </button>
+          <Link
+            href="/projects"
+            className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-all shadow-sm flex items-center gap-1.5"
+          >
+            <ArrowLeft size={14} /> Back to Projects
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const theme = getTheme(project.name);
   const prog = project.progress || 0;

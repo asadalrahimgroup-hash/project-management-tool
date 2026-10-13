@@ -1177,9 +1177,11 @@ export default function Programs() {
                           <StatusPill status={proj.status} />
                         </div>
 
-                        <h4 className="text-sm font-bold text-slate-900 line-clamp-1 mt-1">
-                          {proj.name}
-                        </h4>
+                        <Link href={`/projects/${proj.id}`} className="group/title block">
+                          <h4 className="text-sm font-bold text-slate-900 group-hover/title:text-indigo-600 transition-colors line-clamp-1 mt-1">
+                            {proj.name}
+                          </h4>
+                        </Link>
                         <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mt-1.5">
                           {proj.about_description || "High-priority milestone scoped under this program squad."}
                         </p>
@@ -1220,7 +1222,15 @@ export default function Programs() {
                             <Calendar size={12} />
                             <span>Deadline: {formatDate(proj.deadline)}</span>
                           </div>
-                          <PriorityPill priority={proj.priority} />
+                          <div className="flex items-center gap-2">
+                            <PriorityPill priority={proj.priority} />
+                            <Link
+                              href={`/projects/${proj.id}`}
+                              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5 ml-1"
+                            >
+                              Open <ChevronRight size={12} />
+                            </Link>
+                          </div>
                         </div>
                       </div>
                     </div>

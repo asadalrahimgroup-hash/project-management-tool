@@ -1,5 +1,10 @@
-﻿import ProjectDetail from "../../Pages/ProjectDetail";
+import ProjectDetail from "../../Pages/ProjectDetail";
 
-export default function ProjectDetailPage() {
-  return <ProjectDetail />;
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function ProjectDetailPage({ params }: PageProps) {
+  const resolvedParams = await params;
+  return <ProjectDetail initialProjectId={resolvedParams.id} />;
 }

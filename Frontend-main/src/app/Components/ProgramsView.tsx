@@ -582,7 +582,9 @@ export default function ProgramsView({
                   <div>
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <h4 className="text-sm font-bold text-slate-900 line-clamp-1">{proj.name}</h4>
+                        <Link href={`/projects/${proj.id}`} className="group/title block">
+                          <h4 className="text-sm font-bold text-slate-900 group-hover/title:text-indigo-600 transition-colors line-clamp-1">{proj.name}</h4>
+                        </Link>
                         <p className="text-[11px] text-slate-400 font-medium">{proj.domain || "General"}</p>
                       </div>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${

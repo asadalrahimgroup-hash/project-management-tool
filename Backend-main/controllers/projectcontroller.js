@@ -773,6 +773,8 @@ const getProjectMembers = async (req, res) => {
     try {
         const { projectId } = req.params;
 
+        const normalizedProjId = projectId.replace(/^pp-(proj-)?/, 'proj-');
+
         const result = await safeQuery(
             `
             SELECT 
@@ -787,12 +789,12 @@ const getProjectMembers = async (req, res) => {
                 u.job_title
             FROM project_members pm
             JOIN users u ON u.id = pm.user_id
-            WHERE pm.project_id = $1 AND u.is_active = TRUE
+            WHERE (pm.project_id = $1 OR pm.project_id = $2 OR ('pp-' || pm.project_id) = $1) AND u.is_active = TRUE
             ORDER BY 
                 CASE WHEN pm.role = 'Project Manager' THEN 1 ELSE 2 END,
                 pm.created_at ASC
             `,
-            [projectId]
+            [projectId, normalizedProjId]
         );
 
         return res.status(200).json({
@@ -987,9 +989,9 @@ const getProjectById = async (req, res) => {
     try {
         const { projectId } = req.params;
 
-        console.log('🔍 Fetching project by ID:', { projectId, user: req.user?.id });
+        const normalizedProjId = projectId.replace(/^pp-(proj-)?/, 'proj-');
 
-        const result = await safeQuery(
+        let result = await safeQuery(
             `
             SELECT 
                 p.id,
@@ -1002,6 +1004,7 @@ const getProjectById = async (req, res) => {
                 p.start_date,
                 p.deadline,
                 p.progress,
+                p.program_id,
                 p.created_at,
                 p.updated_at,
 
@@ -1016,25 +1019,71 @@ const getProjectById = async (req, res) => {
 
             FROM projects p
 
-            JOIN users creator
+            LEFT JOIN users creator
                 ON creator.id = p.created_by
 
             LEFT JOIN users manager
                 ON manager.id = p.project_manager_id
 
             WHERE p.id = $1
+               OR p.id = $2
+               OR ('pp-' || p.id) = $1
             `,
-            [projectId]
+            [projectId, normalizedProjId]
         );
 
+        // Fallback: check program_projects table if not found in projects
         if (result.rows.length === 0) {
+            const normalizedPpId = projectId.startsWith('pp-') ? projectId : `pp-${projectId}`;
+            const ppResult = await safeQuery(
+                `
+                SELECT
+                    pp.id,
+                    pp.name,
+                    pp.domain,
+                    pp.about_title,
+                    pp.about_description,
+                    pp.status,
+                    pp.priority,
+                    pp.start_date,
+                    pp.deadline,
+                    0 AS progress,
+                    pp.program_id,
+                    pp.created_at,
+                    pp.updated_at,
+
+                    creator.id AS creator_id,
+                    creator.full_name AS creator_name,
+                    creator.role AS creator_role,
+
+                    assignee.id AS manager_id,
+                    assignee.full_name AS manager_name,
+                    assignee.email AS manager_email,
+                    assignee.role AS manager_role
+
+                FROM program_projects pp
+                LEFT JOIN users creator ON creator.id = pp.created_by
+                LEFT JOIN users assignee ON assignee.id = pp.assigned_to
+                WHERE pp.id = $1 OR pp.id = $2
+                `,
+                [projectId, normalizedPpId]
+            );
+
+            if (ppResult.rows.length > 0) {
+                console.log('✅ Project found in program_projects:', ppResult.rows[0].id);
+                return res.status(200).json({
+                    success: true,
+                    project: ppResult.rows[0]
+                });
+            }
+
             return res.status(404).json({
                 success: false,
                 message: "Project not found."
             });
         }
 
-        console.log('✅ Project found:', projectId);
+        console.log('✅ Project found:', result.rows[0].id);
 
         return res.status(200).json({
             success: true,

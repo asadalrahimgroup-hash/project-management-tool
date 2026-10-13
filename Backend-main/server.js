@@ -39,8 +39,9 @@ const corsOptions = {
             return callback(null, true);
         }
 
-        // Allow configured origins or any vercel.app preview/production deployment
+        // Allow configured origins, any localhost/127.0.0.1 port, or vercel.app preview/production deployment
         if (
+            /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
             allowedOrigins.includes(origin) ||
             origin.endsWith(".vercel.app")
         ) {
