@@ -77,7 +77,7 @@ const getProjects = async (req, res) => {
 
             FROM projects p
 
-            JOIN users creator
+            LEFT JOIN users creator
                 ON creator.id = p.created_by
 
             LEFT JOIN users manager
@@ -110,6 +110,7 @@ const getProjects = async (req, res) => {
 
             WHERE $1 = TRUE 
                OR p.project_manager_id = $2
+               OR p.manager_id = $2
                OR p.created_by = $2
                OR p.id IN (SELECT project_id FROM project_members WHERE user_id = $2)
                OR p.id IN (SELECT project_id FROM tasks WHERE assignee_id = $2 OR assigned_to = $2)

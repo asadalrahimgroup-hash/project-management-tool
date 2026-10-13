@@ -3,7 +3,11 @@
 const rawBase =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE ||
-  "http://localhost:5000/api";
+  (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
+    ? "https://backend-five-swart-88.vercel.app/api"
+    : process.env.NODE_ENV === "production"
+    ? "https://backend-five-swart-88.vercel.app/api"
+    : "http://localhost:5000/api");
 
 // Ensure API_BASE always includes the '/api' prefix and never ends with a trailing slash
 function normalizeApiBase(url: string): string {
