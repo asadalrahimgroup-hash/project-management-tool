@@ -38,20 +38,25 @@ const COVER_THEMES = [
   { from: "#ea580c", to: "#c2410c", pattern: "dots" },
 ];
 
-function getTheme(name: string) {
+function getTheme(name?: string) {
+  const str = name || "Project";
   let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
   return COVER_THEMES[Math.abs(hash) % COVER_THEMES.length];
 }
 
-function daysUntil(d?: string | null) {
+function daysUntil(d?: string | null): number | null {
   if (!d) return null;
-  return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000);
+  const time = new Date(d).getTime();
+  if (isNaN(time)) return null;
+  return Math.ceil((time - Date.now()) / 86400000);
 }
 
-function getInitials(name?: string) {
+function getInitials(name?: string): string {
   if (!name) return "?";
-  return name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  return parts.slice(0, 2).map(p => p[0] || "").join("").toUpperCase() || "?";
 }
 
 const AVATAR_GRADS = [
@@ -59,14 +64,27 @@ const AVATAR_GRADS = [
   "from-emerald-400 to-teal-500", "from-rose-400 to-pink-500",
   "from-amber-400 to-orange-500", "from-violet-400 to-purple-500",
 ];
-function avatarGrad(name: string) {
-  return AVATAR_GRADS[name.charCodeAt(0) % AVATAR_GRADS.length];
+function avatarGrad(name?: string): string {
+  const str = name || "?";
+  return AVATAR_GRADS[str.charCodeAt(0) % AVATAR_GRADS.length];
 }
 
 function priorityColor(p?: string) {
   if ((p || "").toLowerCase() === "high") return "#ef4444";
   if ((p || "").toLowerCase() === "low") return "#94a3b8";
   return "#f59e0b";
+}
+
+function safeDateIso(d?: string | null): string {
+  if (!d) return "";
+  const dt = new Date(d);
+  return isNaN(dt.getTime()) ? "" : dt.toISOString().split("T")[0];
+}
+
+function safeDateDisplay(d?: string | null, opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" }, fallback: string = "Not set"): string {
+  if (!d) return fallback;
+  const dt = new Date(d);
+  return isNaN(dt.getTime()) ? fallback : dt.toLocaleDateString("en-US", opts);
 }
 
 // â”€â”€â”€ SVG Donut â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -368,7 +386,11 @@ export default function ProjectDetail({ initialProjectId }: ProjectDetailProps =
     const inProgress = tasks.filter(t => t.status === "In Progress").length;
     const review = tasks.filter(t => t.status === "Review").length;
     const todo = tasks.filter(t => t.status === "To Do" || !t.status).length;
-    const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && !["done", "completed"].includes((t.status || "").toLowerCase())).length;
+    const overdue = tasks.filter(t => {
+      if (!t.due_date) return false;
+      const dt = new Date(t.due_date).getTime();
+      return !isNaN(dt) && dt < Date.now() && !["done", "completed"].includes((t.status || "").toLowerCase());
+    }).length;
     const rate = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0;
     const assignees = Array.from(new Set(tasks.filter(t => t.assignee_name).map(t => t.assignee_name!)));
     const highPri = tasks.filter(t => (t.priority || "").toLowerCase() === "high").length;
@@ -426,10 +448,10 @@ export default function ProjectDetail({ initialProjectId }: ProjectDetailProps =
         {/* Subtle geometric dot pattern */}
         <div className="absolute inset-0 opacity-15">
           <svg width="100%" height="100%">
-            <pattern id={`hero-p-${project.name}`} x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+            <pattern id={`hero-p-${(project.id || "default").replace(/[^a-zA-Z0-9_-]/g, "")}`} x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
               <circle cx="3" cy="3" r="2" fill="white" />
             </pattern>
-            <rect width="100%" height="100%" fill={`url(#hero-p-${project.name})`} />
+            <rect width="100%" height="100%" fill={`url(#hero-p-${(project.id || "default").replace(/[^a-zA-Z0-9_-]/g, "")})`} />
           </svg>
         </div>
 
@@ -457,11 +479,11 @@ export default function ProjectDetail({ initialProjectId }: ProjectDetailProps =
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                 <span className="text-[11px] font-bold text-white/95 bg-white/20 backdrop-blur-md border border-white/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                  <Layers size={11} /> Program: {getProjectProgram(project).name}
+                  <Layers size={11} /> Program: {getProjectProgram(project)?.name || "General"}
                 </span>
                 <span className="text-white/60 text-xs font-semibold uppercase tracking-wider">{project.domain || "General"}</span>
               </div>
-              <h1 className="text-white text-2xl font-black tracking-tight drop-shadow-lg line-clamp-1">{project.name}</h1>
+              <h1 className="text-white text-2xl font-black tracking-tight drop-shadow-lg line-clamp-1">{project.name || "Untitled Project"}</h1>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {isManager && (
@@ -474,8 +496,8 @@ export default function ProjectDetail({ initialProjectId }: ProjectDetailProps =
                         domain: project.domain || "",
                         priority: project.priority || "Medium",
                         status: project.status || "Planning",
-                        startDate: project.start_date ? new Date(project.start_date).toISOString().split('T')[0] : "",
-                        deadline: project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : "",
+                        startDate: safeDateIso(project.start_date),
+                        deadline: safeDateIso(project.deadline),
                         about_title: project.about_title || "",
                         about_description: project.about_description || ""
                       });
@@ -590,8 +612,8 @@ export default function ProjectDetail({ initialProjectId }: ProjectDetailProps =
                   />
                 </div>
                 <div className="flex justify-between mt-1">
-                  <span className="text-[10px] text-gray-400">{project.start_date ? new Date(project.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Start"}</span>
-                  <span className="text-[10px] text-gray-400">{project.deadline ? new Date(project.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "No deadline"}</span>
+                  <span className="text-[10px] text-gray-400">{safeDateDisplay(project.start_date, { month: "short", day: "numeric" }, "Start")}</span>
+                  <span className="text-[10px] text-gray-400">{safeDateDisplay(project.deadline, { month: "short", day: "numeric", year: "numeric" }, "No deadline")}</span>
                 </div>
               </div>
 
@@ -638,12 +660,12 @@ export default function ProjectDetail({ initialProjectId }: ProjectDetailProps =
               )}
               <div className="space-y-3 pt-2">
                 {[
-                  { icon: Layers, label: "Program", value: getProjectProgram(project).name },
+                  { icon: Layers, label: "Program", value: getProjectProgram(project)?.name || "General" },
                   { icon: Flag, label: "Priority", value: project.priority || "Medium", badge: true },
-                  { icon: Calendar, label: "Start Date", value: project.start_date ? new Date(project.start_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "Not set" },
+                  { icon: Calendar, label: "Start Date", value: safeDateDisplay(project.start_date, { month: "long", day: "numeric", year: "numeric" }, "Not set") },
                   {
                     icon: Clock, label: "Deadline",
-                    value: project.deadline ? new Date(project.deadline).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "Not set",
+                    value: safeDateDisplay(project.deadline, { month: "long", day: "numeric", year: "numeric" }, "Not set"),
                     highlight: isOverdue ? "text-rose-600" : (days !== null && days <= 7 ? "text-amber-600" : undefined),
                   },
                   { icon: User, label: "Project Lead", value: project.manager_name || "Unassigned" },
@@ -825,9 +847,9 @@ export default function ProjectDetail({ initialProjectId }: ProjectDetailProps =
                       <td className="py-3 px-4 hidden md:table-cell">
                         {t.due_date ? (
                           <span className={`text-xs font-semibold ${isLate ? "text-rose-600" : days !== null && days <= 3 ? "text-amber-600" : "text-gray-400"}`}>
-                            {isLate ? `${Math.abs(days!)}d overdue` : new Date(t.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            {isLate ? `${Math.abs(days!)}d overdue` : safeDateDisplay(t.due_date, { month: "short", day: "numeric" }, "—")}
                           </span>
-                        ) : <span className="text-gray-300 text-xs">â€”</span>}
+                        ) : <span className="text-gray-300 text-xs">—</span>}
                       </td>
                     </tr>
                   );
