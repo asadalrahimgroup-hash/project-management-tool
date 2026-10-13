@@ -216,6 +216,7 @@ async function initDatabase(poolInstance) {
 `);
 
       // Seed users with rotated credentials
+      const adminHash = bcrypt.hashSync("Arg@Admin#2026!X9qL$", 10);
       const asadHash = bcrypt.hashSync("Arg@Asad2026!", 10);
       const qasimHash = bcrypt.hashSync("Arg@Qasim2026!", 10);
       const fahadHash = bcrypt.hashSync("Arg@Fahad2026!", 10);
@@ -223,6 +224,25 @@ async function initDatabase(poolInstance) {
       const hibaHash = bcrypt.hashSync("Arg@Hiba2026!", 10);
       const kinjalHash = bcrypt.hashSync("Arg@Kinjal2026!", 10);
       const khizraHash = bcrypt.hashSync("Arg@Khizra2026!", 10);
+
+      // Seed Dedicated System Administrator with strong credentials
+      await client.query(`
+        INSERT INTO users (id, full_name, email, password_hash, role, job_title, is_active)
+        VALUES 
+          ('usr-admin-system', 'System Administrator', 'admin@argplatform.com', '${adminHash}', 'System Administrator', 'Enterprise System Administrator & Security Lead', true)
+        ON CONFLICT (email) DO UPDATE SET 
+          full_name = EXCLUDED.full_name,
+          password_hash = '${adminHash}',
+          role = 'System Administrator',
+          job_title = 'Enterprise System Administrator & Security Lead',
+          is_active = true,
+          updated_at = NOW();
+
+        -- Also ensure existing admin account (asadali@alrahimgroup.com) is synchronized with strong admin credentials
+        UPDATE users 
+        SET password_hash = '${adminHash}', role = 'System Administrator', is_active = true, updated_at = NOW()
+        WHERE email = 'asadali@alrahimgroup.com';
+      `);
 
       await client.query(`
         INSERT INTO users (id, full_name, email, password_hash, role, job_title, is_active)

@@ -6,11 +6,14 @@ const requireSystemAdministrator = (req, res, next) => {
     });
   }
 
- const allowedRoles = ["System Administrator", "Project Manager"];
+  const allowedRoles = ["System Administrator"];
 
-if (!allowedRoles.includes(req.user.role)) {
-  return res.status(403).json({ error: 'Only administrator or project manager can manage users' });
-}
+  if (!allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({
+      success: false,
+      error: "Access denied. The Admin Console and administrative functions are strictly restricted to the System Administrator account."
+    });
+  }
 
   next();
 };

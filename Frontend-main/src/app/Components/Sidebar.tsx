@@ -51,13 +51,14 @@ const MANAGER_NAV_GROUPS: NavGroup[] = [
       { label: "Daily Updates", href: "/daily-updates", icon: Sparkles },
     ],
   },
-  {
-    title: "ADMINISTRATION",
-    items: [
-      { label: "Admin Console", href: "/admin", icon: ShieldCheck, badge: "Admin" },
-    ],
-  },
 ];
+
+const ADMIN_NAV_GROUP: NavGroup = {
+  title: "ADMINISTRATION",
+  items: [
+    { label: "Admin Console", href: "/admin", icon: ShieldCheck, badge: "Admin" },
+  ],
+};
 
 const MEMBER_NAV_GROUPS: NavGroup[] = [
   {
@@ -84,15 +85,26 @@ export default function Sidebar() {
   const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Role detection
+  // Role detection: Admin Console strictly for System Administrator
   const role = (user?.role || "").toLowerCase();
+  const isAdmin = user?.role === "System Administrator" || role === "system administrator";
   const isManager =
     role.includes("manager") ||
-    role.includes("administrator") ||
-    role.includes("admin") ||
-    role.includes("lead");
+    role.includes("lead") ||
+    isAdmin;
 
-  const navGroups = isManager ? MANAGER_NAV_GROUPS : MEMBER_NAV_GROUPS;
+  let navGroups: NavGroup[];
+  if (isManager) {
+    navGroups = [...MANAGER_NAV_GROUPS];
+    if (isAdmin) {
+      navGroups.push(ADMIN_NAV_GROUP);
+    }
+  } else {
+    navGroups = [...MEMBER_NAV_GROUPS];
+    if (isAdmin) {
+      navGroups.push(ADMIN_NAV_GROUP);
+    }
+  }
 
   // Listen for mobile toggle event
   useEffect(() => {

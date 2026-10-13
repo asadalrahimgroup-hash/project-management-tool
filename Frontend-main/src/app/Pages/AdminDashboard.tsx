@@ -66,11 +66,13 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const roleLower = (user?.role || "").toLowerCase();
-  const isManager =
-    roleLower.includes("manager") ||
-    roleLower.includes("administrator") ||
-    roleLower.includes("admin") ||
-    roleLower.includes("lead");
+  const isAdmin = user?.role === "System Administrator" || roleLower === "system administrator";
+
+  useEffect(() => {
+    if (user && !isAdmin) {
+      router.replace("/dashboard");
+    }
+  }, [user, isAdmin, router]);
 
   const [activeTab, setActiveTab] = useState<"overview" | "members" | "programs" | "projects">("overview");
   const [loading, setLoading] = useState(true);
@@ -490,16 +492,18 @@ export default function AdminDashboard() {
     };
   }, [usersList, programsList, projectsList]);
 
-  if (!isManager) {
+  if (!isAdmin) {
     return (
       <div className="min-h-[calc(100vh-56px)] flex flex-col items-center justify-center p-6 text-center">
-        <ShieldCheck size={48} className="text-rose-500 mb-3" />
+        <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mb-4 shadow-sm">
+          <ShieldCheck size={36} />
+        </div>
         <h2 className="text-xl font-bold text-slate-900">Access Restricted</h2>
-        <p className="text-sm text-slate-500 max-w-md mt-1">
-          The Administration Console is reserved for Project Managers and Administrators.
+        <p className="text-sm text-slate-500 max-w-md mt-1 mb-6">
+          The Admin Console is strictly reserved for the System Administrator account.
         </p>
-        <Link href="/dashboard" className="mt-4 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-xl text-sm hover:bg-indigo-700">
-          Back to Dashboard
+        <Link href="/dashboard" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs shadow-sm transition-all">
+          Return to Dashboard
         </Link>
       </div>
     );
